@@ -14,6 +14,8 @@ db.sqlite3
 # Dependências e virtualenv
 venv/
 .venv/
+.env
+.idea
 __pycache__/
 pip-wheel-metadata/
 
