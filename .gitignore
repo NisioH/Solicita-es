@@ -1,0 +1,27 @@
+# Arquivos do sistema
+*.log
+*.pyc
+*.pyo
+*.env
+
+# Banco de dados local
+db.sqlite3
+
+# Configuração do editor (VS Code, PyCharm)
+.vscode/
+.idea/
+
+# Dependências e virtualenv
+venv/
+.venv/
+__pycache__/
+pip-wheel-metadata/
+
+# Arquivos do Django
+static/
+media/
+migrations/
+
+# Chaves de configuração (segurança)
+settings.py
+.env
