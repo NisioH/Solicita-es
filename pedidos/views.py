@@ -5,6 +5,10 @@ from .database import db
 @api_view(['POST'])
 def criar_solicitacao(request):
     data = request.data
+    campos_obrigatorios = ["numero", "descricao", "solicitado_por", "safra", "centro_custo", "status"]
+    for campo in campos_obrigatorios:
+        if campo not in data:
+            return Response({"mensagem": f"Campo '{campo}' é obrigatório."}, status=400)
     db.solicitacoes.insert_one(data)
     return Response({"mensagem": "Solicitação criada com sucesso!"}, status=201)
 
@@ -43,3 +47,10 @@ def deletar_solicitacao(request, numero):
     if resultado.deleted_count > 0:
         return Response({"mensagem": "Solicitação deletada com sucesso."})
     return Response({"mensagem": "Solicitação não encontrada."}, status=404)
+
+@api_view(['GET'])
+def listar_solicitacoes(request):
+    solicitacoes = db.solicitacoes.find()
+    resultados = [dict(solic, _id=str(solic["_id"])) for solic in solicitacoes]
+    return Response(resultados)
+
