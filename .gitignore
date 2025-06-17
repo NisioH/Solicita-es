@@ -25,5 +25,4 @@ media/
 migrations/
 
 # Chaves de configuração (segurança)
-settings.py
 .env
