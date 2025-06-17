@@ -5,12 +5,24 @@ from .database import db
 @api_view(['POST'])
 def criar_solicitacao(request):
     data = request.data
+    print("Recebido:", data)
     campos_obrigatorios = ["numero", "descricao", "solicitado_por", "safra", "centro_custo", "status"]
     for campo in campos_obrigatorios:
         if campo not in data:
             return Response({"mensagem": f"Campo '{campo}' é obrigatório."}, status=400)
     db.solicitacoes.insert_one(data)
     return Response({"mensagem": "Solicitação criada com sucesso!"}, status=201)
+
+# @api_view(['POST'])
+# def criar_solicitacao(request):
+#     try:
+#         data = request.data
+#         resultado = db.solicitacoes.insert_one(data)
+#         return Response({"mensagem": "Solicitação criada!", "id": str(resultado.inserted_id)}, status=201)
+#     except Exception as e:
+#         print("Erro ao salvar no MongoDB:", e)  # 👈 Aqui veremos o erro no terminal
+#         return Response({"mensagem": f"Erro interno: {str(e)}"}, status=500)
+
 
 @api_view(['GET'])
 def buscar_solicitacao(request):
