@@ -13,35 +13,38 @@ def criar_solicitacao(request):
     db.solicitacoes.insert_one(data)
     return Response({"mensagem": "Solicitação criada com sucesso!"}, status=201)
 
-# @api_view(['POST'])
-# def criar_solicitacao(request):
-#     try:
-#         data = request.data
-#         resultado = db.solicitacoes.insert_one(data)
-#         return Response({"mensagem": "Solicitação criada!", "id": str(resultado.inserted_id)}, status=201)
-#     except Exception as e:
-#         print("Erro ao salvar no MongoDB:", e)  # 👈 Aqui veremos o erro no terminal
-#         return Response({"mensagem": f"Erro interno: {str(e)}"}, status=500)
 
 
 @api_view(['GET'])
 def buscar_solicitacao(request):
-    numero = request.GET.get("numero")
-    palavra = request.GET.get("palavra")
+    try:
+        numero = request.GET.get("numero")
+        palavra = request.GET.get("palavra")
 
-    if numero:
-        solicitacao = db.solicitacoes.find_one({"numero": numero})
-        if solicitacao:
-            solicitacao["_id"] = str(solicitacao["_id"])
-            return Response(solicitacao)
-        return Response({"mensagem": "Solicitação não encontrada."}, status=404)
-    elif palavra:
-        solicitacoes = db.solicitacoes.find({"$text": {"$search": palavra}})
-        resultado = [dict(solic, _id=str(solic["_id"])) for solic in solicitacoes]
-        if resultado:
-            return Response(resultado)
-        return Response({"mensagem": "Nenhuma solcitação encontrada com essa palavra."}, status=404)
-    return Response({"mensagem": "Informe um número ou palavra de busca."}, status=400)
+        if numero:
+            solicitacao = db.solicitacoes.find_one({"numero": numero})
+            if solicitacao:
+                solicitacao["_id"] = str(solicitacao["_id"])
+                return Response(solicitacao)
+            return Response({"mensagem": "Solicitação não encontrada."}, status=404)
+
+        elif palavra:
+            solicitacoes = db.solicitacoes.find({"$text": {"$search": palavra}})
+            resultado = [dict(solic, _id=str(solic["_id"])) for solic in solicitacoes]
+
+            if resultado:
+                return Response(resultado)
+            return Response({"mensagem": "Nenhuma solicitação encontrada com essa palavra."}, status=404)
+
+        return Response({"mensagem": "Informe um número ou palavra de busca."}, status=400)
+
+    except Exception as e:
+        print("Erro ao buscar no MongoDB:", e)  # 👈 Isso mostrará o erro exato
+        return Response({"mensagem": f"Erro interno: {str(e)}"}, status=500)
+
+
+
+
 
 @api_view(['PUT'])
 def atualizar_solicitacao(request, numero):
