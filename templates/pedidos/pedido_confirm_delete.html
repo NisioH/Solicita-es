@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+
+{% block title %}Confirmar Exclusão{% endblock %}
+
+{% block content %}
+<div class="text-center">
+    <h1 class="mb-4 text-danger">Confirmar Exclusão</h1>
+    <div class="alert alert-warning" role="alert">
+        <p class="lead">Você tem certeza que deseja excluir a Solicitaçã:</p>
+        <p class="mb-4"><strong>Número:</strong> {{ pedido.numero }}<br>
+           <strong>Descrição:</strong> {{ pedido.descricao }}</p>
+    </div>
+    <form method="post" class="d-inline-block">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger me-2">Confirmar Exclusão</button>
+        <a href="{% url 'pedido_list' %}" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock content %}

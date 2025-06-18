@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if pedido %}Editar{% else %}Criar{% endif %} Pedido{% endblock %}
+
+{% block content %}
+<h1 class="mb-4 text-center">{% if pedido %}Editar Solicitação{% else %}Criar Nova Solicitação{% endif %}</h1>
+<form method="post">
+    {% csrf_token %}
+
+    <div class="mb-3">
+        <label for="id_numero" class="form-label">Número do Pedido</label>
+        <input type="text" name="numero" id="id_numero" class="form-control" value="{{ pedido.numero|default:'' }}" {% if pedido %}readonly{% endif %} required>
+        {% if errors.numero %}<div class="errorlist text-danger">{{ errors.numero.0 }}</div>{% endif %}
+    </div>
+
+    <div class="mb-3">
+        <label for="id_descricao" class="form-label">Descrição</label>
+        <textarea name="descricao" id="id_descricao" class="form-control" rows="3" required>{{ pedido.descricao|default:'' }}</textarea>
+        {% if errors.descricao %}<div class="errorlist text-danger">{{ errors.descricao.0 }}</div>{% endif %}
+    </div>
+
+    <div class="mb-3">
+        <label for="id_solicitado_por" class="form-label">Solicitado Por</label>
+        <input type="text" name="solicitado_por" id="id_solicitado_por" class="form-control" value="{{ pedido.solicitado_por|default:'' }}" required>
+        {% if errors.solicitado_por %}<div class="errorlist text-danger">{{ errors.solicitado_por.0 }}</div>{% endif %}
+    </div>
+
+    <div class="mb-3">
+        <label for="id_safra" class="form-label">Safra</label>
+        <input type="text" name="safra" id="id_safra" class="form-control" value="{{ pedido.safra|default:'' }}" required>
+        {% if errors.safra %}<div class="errorlist text-danger">{{ errors.safra.0 }}</div>{% endif %}
+    </div>
+
+    <div class="mb-3">
+        <label for="id_centro_custo" class="form-label">Centro de Custo</label>
+        <input type="text" name="centro_custo" id="id_centro_custo" class="form-control" value="{{ pedido.centro_custo|default:'' }}" required>
+        {% if errors.centro_custo %}<div class="errorlist text-danger">{{ errors.centro_custo.0 }}</div>{% endif %}
+    </div>
+
+    <div class="mb-3">
+        <label for="id_status" class="form-label">Status</label>
+        <select name="status" id="id_status" class="form-select" required>
+            <option value="">Selecione um status</option>
+            <option value="Pendente" {% if pedido.status == "Reprovada" %}selected{% endif %}>Pendente</option>
+            <option value="Em Andamento" {% if pedido.status == "Aguaradando" %}selected{% endif %}>Em Andamento</option>
+            <option value="Concluído" {% if pedido.status == "Recebido" %}selected{% endif %}>Concluído</option>
+            <option value="Cancelado" {% if pedido.status == "Cancelado" %}selected{% endif %}>Cancelado</option>
+        </select>
+        {% if errors.status %}<div class="errorlist text-danger">{{ errors.status.0 }}</div>{% endif %}
+    </div>
+
+    <div class="mb-3">
+        <label for="id_data" class="form-label">Data</label>
+        <input type="date" name="data" id="id_data" class="form-control" value="{{ pedido.data|default:'' }}">
+        <div class="form-text text-muted">Formato YYYY-MM-DD</div>
+    </div>
+
+    <div class="mb-3">
+        <label for="id_data_recebido" class="form-label">Data Recebido</label>
+        <input type="date" name="data_recebido" id="id_data_recebido" class="form-control" value="{{ pedido.data_recebido|default:'' }}">
+        <div class="form-text text-muted">Formato YYYY-MM-DD</div>
+    </div>
+
+    <div class="mb-3">
+        <label for="id_fornecedor" class="form-label">Fornecedor</label>
+        <input type="text" name="fornecedor" id="id_fornecedor" class="form-control" value="{{ pedido.fornecedor|default:'' }}">
+    </div>
+
+    <div class="mb-3">
+        <label for="id_nota_fiscal" class="form-label">Nota Fiscal</label>
+        <input type="text" name="nota_fiscal" id="id_nota_fiscal" class="form-control" value="{{ pedido.nota_fiscal|default:'' }}">
+    </div>
+
+    <div class="d-flex justify-content-between mt-4">
+        <button type="submit" class="btn btn-primary">Salvar</button>
+        <a href="{% url 'pedido_list' %}" class="btn btn-secondary">Voltar</a>
+    </div>
+</form>
+{% endblock content %}

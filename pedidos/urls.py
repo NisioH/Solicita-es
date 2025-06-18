@@ -1,12 +1,11 @@
 from django.urls import path
-from .views import criar_solicitacao, listar_solicitacoes, buscar_solicitacao, deletar_solicitacao, \
-    atualizar_solicitacao, gerar_pdf_solicitacao
+from . import views # <--- Este import é fundamental para as views do frontend DENTRO do app 'pedidos'
 
 urlpatterns = [
-    path('solicitacoes/novo/', criar_solicitacao, name='criar_solicitacao'),
-    path('solicitacoes/listar/', listar_solicitacoes, name='listar_solicitacoes'),
-    path('solicitacoes/buscar/', buscar_solicitacao, name='buscar_solicitacao'),
-    path('solicitacoes/atualizar/<str:numero>', atualizar_solicitacao, name='atualizar_solicitacao'),
-    path('solicitacoes/deletar/<str:numero>', deletar_solicitacao, name='deletar_solicitacao'),
-    path('solicitacoes/pdf/', gerar_pdf_solicitacao, name='gerar_pdf_solicitacao'),
+    path('', views.home_page, name='home'),
+    path('pedidos/', views.pedido_list, name='pedido_list'),
+    path('pedidos/novo/', views.pedido_create, name='pedido_create'),
+    path('pedidos/editar/<str:numero>/', views.pedido_update, name='pedido_update'),
+    path('pedidos/excluir/<str:numero>/', views.pedido_delete, name='pedido_delete'),
+    path('pedidos/buscar/', views.pedido_search, name='pedido_search'),
 ]

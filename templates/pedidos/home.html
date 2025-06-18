@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+
+{% block title %}Bem-vindo ao Solicitações App!{% endblock %}
+
+{% block content %}
+<div class="text-center my-5">
+    <h1 class="display-4">Bem-vindo ao Sistema de Controle de Solicitações!</h1>
+    <p class="lead">Gerencie suas solicitações de forma eficiente e organizada.</p>
+    <hr class="my-4">
+    <p>Clique abaixo para acessar a lista de pedidos ou criar um novo.</p>
+    <a class="btn btn-primary btn-lg me-2" href="{% url 'pedido_list' %}" role="button">Ver Solicitações</a>
+    <a class="btn btn-success btn-lg" href="{% url 'pedido_create' %}" role="button">Criar Novo</a>
+</div>
+{% endblock content %}
