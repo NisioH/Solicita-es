@@ -37,17 +37,21 @@
         {% if errors.centro_custo %}<div class="errorlist text-danger">{{ errors.centro_custo.0 }}</div>{% endif %}
     </div>
 
-    <div class="mb-3">
-        <label for="id_status" class="form-label">Status</label>
-        <select name="status" id="id_status" class="form-select" required>
-            <option value="">Selecione um status</option>
-            <option value="Pendente" {% if pedido.status == "Reprovada" %}selected{% endif %}>Pendente</option>
-            <option value="Em Andamento" {% if pedido.status == "Aguaradando" %}selected{% endif %}>Em Andamento</option>
-            <option value="Concluído" {% if pedido.status == "Recebido" %}selected{% endif %}>Concluído</option>
-            <option value="Cancelado" {% if pedido.status == "Cancelado" %}selected{% endif %}>Cancelado</option>
-        </select>
-        {% if errors.status %}<div class="errorlist text-danger">{{ errors.status.0 }}</div>{% endif %}
-    </div>
+    <div class="form-group">
+    <label for="id_status">Status:</label>
+    <select class="form-control" id="id_status" name="status" required>
+        <option value="">Selecione o Status</option>
+        <option value="Recebido" {% if pedido.status == 'Recebido' %}selected{% endif %}>Recebido</option>
+        <option value="Aguardando" {% if pedido.status == 'Aguardando' %}selected{% endif %}>Aguardando</option>
+        <option value="Cancelada" {% if pedido.status == 'Cancelada' %}selected{% endif %}>Cancelada</option>
+        <option value="Reprovada" {% if pedido.status == 'Reprovada' %}selected{% endif %}>Reprovada</option>
+    </select>
+    {% if errors.status %}
+        <div class="text-danger">
+            {% for error in errors.status %}{{ error }}{% endfor %}
+        </div>
+    {% endif %}
+</div>
 
     <div class="mb-3">
         <label for="id_data" class="form-label">Data</label>

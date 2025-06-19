@@ -15,6 +15,18 @@
             <i class="bi bi-search me-1"></i> Buscar
         </button>
     </form>
+
+    <form action="{% url 'pedido_search' %}" method="GET" class="mb-4">
+        <div class="input-group">
+            <input type="text" name="q" class="form-control" placeholder="Buscar por número ou descrição..." value="{{ query }}">
+
+            <input type="text" name="centro_custo" class="form-control" placeholder="Buscar por centro de custo..." value="{{ centro_custo_query }}">
+
+            <div class="input-group-append">
+                <button class="btn btn-primary" type="submit">Buscar</button>
+            </div>
+        </div>
+    </form>
 </div>
 
 {% if pedidos %}
