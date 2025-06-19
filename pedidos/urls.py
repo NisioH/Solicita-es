@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views # <--- Este import é fundamental para as views do frontend DENTRO do app 'pedidos'
+from . import views
 
 urlpatterns = [
     path('', views.home_page, name='home'),
