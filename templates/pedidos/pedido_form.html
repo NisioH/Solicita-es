@@ -1,83 +1,152 @@
-{% extends 'base.html' %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if pedido %}Editar Solicitação{% else %}Nova Solicitação{% endif %}</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 20px;
+        }
+        .container {
+            max-width: 800px; /* Largura máxima para o formulário */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mb-4">{% if pedido %}Editar Solicitação{% else %}Nova Solicitação{% endif %}</h1>
 
-{% block title %}{% if pedido %}Editar{% else %}Criar{% endif %} Pedido{% endblock %}
+        <form method="post">
+            {% csrf_token %}
 
-{% block content %}
-<h1 class="mb-4 text-center">{% if pedido %}Editar Solicitação{% else %}Criar Nova Solicitação{% endif %}</h1>
-<form method="post">
-    {% csrf_token %}
+            {% if messages %}
+                <ul class="messages list-unstyled">
+                    {% for message in messages %}
+                        <li class="alert {% if message.tags %}alert-{{ message.tags }}{% else %}alert-info{% endif %}">{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
 
-    <div class="mb-3">
-        <label for="id_numero" class="form-label">Número do Pedido</label>
-        <input type="text" name="numero" id="id_numero" class="form-control" value="{{ pedido.numero|default:'' }}" {% if pedido %}readonly{% endif %} required>
-        {% if errors.numero %}<div class="errorlist text-danger">{{ errors.numero.0 }}</div>{% endif %}
+            <div class="form-group">
+                <label for="id_numero">Número da Solicitação:</label>
+                <input type="text"
+                       class="form-control"
+                       id="id_numero"
+                       name="numero"
+                       value="{{ pedido.numero|default_if_none:'' }}"
+                       placeholder="Digite o número da solicitação"
+                       required> {% if errors.numero %}
+                    <div class="text-danger">
+                        {% for error in errors.numero %}{{ error }}{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="id_descricao">Descrição:</label>
+                <textarea class="form-control" id="id_descricao" name="descricao" rows="3" required>{{ pedido.descricao|default_if_none:'' }}</textarea>
+                {% if errors.descricao %}
+                    <div class="text-danger">
+                        {% for error in errors.descricao %}{{ error }}{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="id_solicitado_por">Solicitado Por:</label>
+                <input type="text" class="form-control" id="id_solicitado_por" name="solicitado_por" value="{{ pedido.solicitado_por|default_if_none:'' }}" required>
+                {% if errors.solicitado_por %}
+                    <div class="text-danger">
+                        {% for error in errors.solicitado_por %}{{ error }}{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="id_safra">Safra:</label>
+                <input type="text" class="form-control" id="id_safra" name="safra" value="{{ pedido.safra|default_if_none:'' }}" required>
+                {% if errors.safra %}
+                    <div class="text-danger">
+                        {% for error in errors.safra %}{{ error }}{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="id_centro_custo">Centro de Custo:</label>
+                <input type="text" class="form-control" id="id_centro_custo" name="centro_custo" value="{{ pedido.centro_custo|default_if_none:'' }}" required>
+                {% if errors.centro_custo %}
+                    <div class="text-danger">
+                        {% for error in errors.centro_custo %}{{ error }}{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="id_status">Status:</label>
+                <select class="form-control" id="id_status" name="status" required>
+                    <option value="">Selecione o Status</option>
+                    <option value="Recebido" {% if pedido.status == 'Recebido' %}selected{% endif %}>Recebido</option>
+                    <option value="Aguardando" {% if pedido.status == 'Aguardando' %}selected{% endif %}>Aguardando</option>
+                    <option value="Cancelada" {% if pedido.status == 'Cancelada' %}selected{% endif %}>Cancelada</option>
+                    <option value="Reprovada" {% if pedido.status == 'Reprovada' %}selected{% endif %}>Reprovada</option>
+                </select>
+                {% if errors.status %}
+                    <div class="text-danger">
+                        {% for error in errors.status %}{{ error }}{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="id_data">Data:</label>
+                <input type="date" class="form-control" id="id_data" name="data" value="{{ pedido.data|default_if_none:'' }}" required>
+                {% if errors.data %}
+                    <div class="text-danger">
+                        {% for error in errors.data %}{{ error }}{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="id_data_recebido">Data Recebido:</label>
+                <input type="date" class="form-control" id="id_data_recebido" name="data_recebido" value="{{ pedido.data_recebido|default_if_none:'' }}">
+                {% if errors.data_recebido %}
+                    <div class="text-danger">
+                        {% for error in errors.data_recebido %}{{ error }}{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="id_fornecedor">Fornecedor:</label>
+                <input type="text" class="form-control" id="id_fornecedor" name="fornecedor" value="{{ pedido.fornecedor|default_if_none:'' }}">
+                {% if errors.fornecedor %}
+                    <div class="text-danger">
+                        {% for error in errors.fornecedor %}{{ error }}{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="id_nota_fiscal">Nota Fiscal:</label>
+                <input type="text" class="form-control" id="id_nota_fiscal" name="nota_fiscal" value="{{ pedido.nota_fiscal|default_if_none:'' }}">
+                {% if errors.nota_fiscal %}
+                    <div class="text-danger">
+                        {% for error in errors.nota_fiscal %}{{ error }}{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <button type="submit" class="btn btn-primary">Salvar</button>
+            <a href="{% url 'pedido_list' %}" class="btn btn-secondary">Voltar para a Lista</a>
+        </form>
     </div>
 
-    <div class="mb-3">
-        <label for="id_descricao" class="form-label">Descrição</label>
-        <textarea name="descricao" id="id_descricao" class="form-control" rows="3" required>{{ pedido.descricao|default:'' }}</textarea>
-        {% if errors.descricao %}<div class="errorlist text-danger">{{ errors.descricao.0 }}</div>{% endif %}
-    </div>
-
-    <div class="mb-3">
-        <label for="id_solicitado_por" class="form-label">Solicitado Por</label>
-        <input type="text" name="solicitado_por" id="id_solicitado_por" class="form-control" value="{{ pedido.solicitado_por|default:'' }}" required>
-        {% if errors.solicitado_por %}<div class="errorlist text-danger">{{ errors.solicitado_por.0 }}</div>{% endif %}
-    </div>
-
-    <div class="mb-3">
-        <label for="id_safra" class="form-label">Safra</label>
-        <input type="text" name="safra" id="id_safra" class="form-control" value="{{ pedido.safra|default:'' }}" required>
-        {% if errors.safra %}<div class="errorlist text-danger">{{ errors.safra.0 }}</div>{% endif %}
-    </div>
-
-    <div class="mb-3">
-        <label for="id_centro_custo" class="form-label">Centro de Custo</label>
-        <input type="text" name="centro_custo" id="id_centro_custo" class="form-control" value="{{ pedido.centro_custo|default:'' }}" required>
-        {% if errors.centro_custo %}<div class="errorlist text-danger">{{ errors.centro_custo.0 }}</div>{% endif %}
-    </div>
-
-    <div class="form-group">
-    <label for="id_status">Status:</label>
-    <select class="form-control" id="id_status" name="status" required>
-        <option value="">Selecione o Status</option>
-        <option value="Recebido" {% if pedido.status == 'Recebido' %}selected{% endif %}>Recebido</option>
-        <option value="Aguardando" {% if pedido.status == 'Aguardando' %}selected{% endif %}>Aguardando</option>
-        <option value="Cancelada" {% if pedido.status == 'Cancelada' %}selected{% endif %}>Cancelada</option>
-        <option value="Reprovada" {% if pedido.status == 'Reprovada' %}selected{% endif %}>Reprovada</option>
-    </select>
-    {% if errors.status %}
-        <div class="text-danger">
-            {% for error in errors.status %}{{ error }}{% endfor %}
-        </div>
-    {% endif %}
-</div>
-
-    <div class="mb-3">
-        <label for="id_data" class="form-label">Data</label>
-        <input type="date" name="data" id="id_data" class="form-control" value="{{ pedido.data|default:'' }}">
-        <div class="form-text text-muted">Formato YYYY-MM-DD</div>
-    </div>
-
-    <div class="mb-3">
-        <label for="id_data_recebido" class="form-label">Data Recebido</label>
-        <input type="date" name="data_recebido" id="id_data_recebido" class="form-control" value="{{ pedido.data_recebido|default:'' }}">
-        <div class="form-text text-muted">Formato YYYY-MM-DD</div>
-    </div>
-
-    <div class="mb-3">
-        <label for="id_fornecedor" class="form-label">Fornecedor</label>
-        <input type="text" name="fornecedor" id="id_fornecedor" class="form-control" value="{{ pedido.fornecedor|default:'' }}">
-    </div>
-
-    <div class="mb-3">
-        <label for="id_nota_fiscal" class="form-label">Nota Fiscal</label>
-        <input type="text" name="nota_fiscal" id="id_nota_fiscal" class="form-control" value="{{ pedido.nota_fiscal|default:'' }}">
-    </div>
-
-    <div class="d-flex justify-content-between mt-4">
-        <button type="submit" class="btn btn-primary">Salvar</button>
-        <a href="{% url 'pedido_list' %}" class="btn btn-secondary">Voltar</a>
-    </div>
-</form>
-{% endblock content %}
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
