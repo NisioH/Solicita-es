@@ -1,18 +1,24 @@
+# C:\Users\fazin\OneDrive\Documents\Nisio\Solicita-es\pedidos\views.py
+
 import requests
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from datetime import datetime
-from .database import db
+from .database import db # Certifique-se de que este import está correto para o seu arquivo database.py
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from django.http import HttpResponse
+from bson.objectid import ObjectId # Importar ObjectId para lidar com IDs do MongoDB
 
+# --- Configuração da URL base da API ---
+# A API e o frontend estão no mesmo projeto/servidor, então a porta é a mesma (8000)
+BASE_API_URL = "http://127.0.0.1:8000/api/solicitacoes/"
 
+# --- Função auxiliar para requisições à API (chamando a si mesma) ---
 def api_request(method, endpoint, data=None, params=None):
-    base_url = "http://127.0.0.1:8000/api/solicitacoes/"
-    full_url = f"{base_url}{endpoint}"
+    full_url = f"{BASE_API_URL}{endpoint}"
 
     try:
         response = None
@@ -26,29 +32,75 @@ def api_request(method, endpoint, data=None, params=None):
             response = requests.delete(full_url)
         else:
             raise ValueError("Método HTTP não suportado pela função api_request.")
-        response.raise_for_status()
+        
+        # Levanta um HTTPError para respostas de status 4xx/5xx
+        response.raise_for_status() 
         return response.json()
 
     except requests.exceptions.RequestException as e:
         print(f"Erro na requisição API ({method} {full_url}): {e}")
         if response is not None and response.content:
             try:
+                # Tenta analisar a resposta de erro como JSON
                 error_data = response.json()
+                # Retorna a mensagem de erro específica da API, se disponível
                 return {"error": True, "message": error_data.get("mensagem", str(e))}
             except ValueError:
+                # Se a resposta não for JSON, retorna o texto bruto
                 return {"error": True, "message": f"Erro na API (Resposta não JSON): {response.text}"}
+        # Em caso de erro de conexão (ex: servidor da API não está rodando)
         return {"error": True, "message": f"Erro de conexão com a API: {e}"}
+
+
+
+## Funções de API (Endpoints REST)
+
+#Estas funções são destinadas a serem chamadas por outros serviços ou pelo seu próprio frontend via `api_request`. Elas retornam dados JSON.
+
+#```python
+
+@api_view(['GET'])
+def listar_solicitacoes(request):
+    """
+    Lista todas as solicitações do MongoDB, ordenadas pelas mais recentes primeiro.
+    Retorna uma lista de objetos JSON.
+    """
+    try:
+        # Adiciona .sort('data_criacao', -1) para ordenar por 'data_criacao'
+        # em ordem decrescente (-1 para mais recente primeiro)
+        solicitacoes_cursor = db.solicitacoes.find({}).sort('data_criacao', -1)
+        solicitacoes_list = []
+        for doc in solicitacoes_cursor:
+            # Converte ObjectId para string para JSON
+            doc['_id'] = str(doc['_id'])
+
+            # Formata objetos datetime para strings ISO 8601 para JSON
+            for key, value in doc.items():
+                if isinstance(value, datetime):
+                    doc[key] = value.strftime('%Y-%m-%d %H:%M:%S')
+
+            solicitacoes_list.append(doc)
+
+        return Response(solicitacoes_list, status=200)
+
+    except Exception as e:
+        print(f"API - Erro ao listar solicitações: {e}")
+        return Response({"mensagem": f"Erro interno ao listar solicitações: {str(e)}"}, status=500)
 
 @api_view(['POST'])
 def criar_solicitacao(request):
+    """
+    Cria uma nova solicitação no MongoDB.
+    Recebe dados JSON no corpo da requisição.
+    """
     try:
-        data = request.data
+        data = request.data # request.data é usado para dados JSON/form no DRF
 
         allowed_statuses = ["Recebido", "Aguardando", "Cancelada", "Reprovada"]
-        status = data.get("status")
-        if status and status not in allowed_statuses:
+        status_val = data.get("status") # Usar nome diferente para evitar conflito com built-in
+        if status_val and status_val not in allowed_statuses:
             return Response({"error": True,
-                             "message": f"Status '{status}' inválido. "
+                             "message": f"Status '{status_val}' inválido. "
                                         f"Use um dos seguintes: {', '.join(allowed_statuses)}."},
                             status=400)
 
@@ -57,13 +109,22 @@ def criar_solicitacao(request):
             if not data.get(field):
                 return Response({"error": True, "message": f"O campo '{field}' é obrigatório."}, status=400)
 
-        if db.solicitacoes.find_one({"numero": data["numero"]}):
+        # --- AQUI ESTÁ A CORREÇÃO PRINCIPAL ---
+        # A validação agora checa se existe uma solicitação com o MESMO NÚMERO E a MESMA SAFRA.
+        existing_solicitation = db.solicitacoes.find_one({
+            "numero": data["numero"],
+            "safra": data["safra"]
+        })
+
+        if existing_solicitation:
             return Response({"error": True,
-                             "message": f"O número de solicitação "
-                                        f"'{data['numero']}' já existe. Por favor, escolha outro."},
-                            status=409)  # 409 Conflict
+                             "message": f"Já existe uma solicitação com o número '{data['numero']}' "
+                                        f"para a safra '{data['safra']}'. Por favor, verifique ou use outra combinação."},
+                            status=409) # 409 Conflict - indica conflito de recurso
+        # --- FIM DA CORREÇÃO ---
 
 
+        # Converter strings de data para objetos datetime, se existirem
         if 'data' in data and isinstance(data['data'], str):
             try:
                 data['data'] = datetime.strptime(data['data'], '%Y-%m-%d')
@@ -81,23 +142,28 @@ def criar_solicitacao(request):
                         "Formato de data inválido para 'data_recebido'. Use YYYY-MM-DD."},
                     status=400)
         else:
-            data['data_recebido'] = None
+            data['data_recebido'] = None # Garante que seja None se estiver vazio ou não for fornecido
 
-        data['data_criacao'] = datetime.now()
+        data['data_criacao'] = datetime.now() # Adiciona a data/hora de criação
 
         result = db.solicitacoes.insert_one(data)
         print(f"API - Solicitação criada com ID: {result.inserted_id} e número: {data['numero']}")
         return Response(
             {"mensagem": "Solicitação criada com sucesso!",
              "id": str(result.inserted_id), "numero": data["numero"]},
-            status=201)
+            status=201) # 201 Created - indica que o recurso foi criado
 
     except Exception as e:
         print(f"API - Erro ao criar solicitação: {e}")
         return Response({"mensagem": f"Erro interno ao criar solicitação: {str(e)}"}, status=500)
 
+
 @api_view(['GET'])
 def buscar_solicitacao(request):
+    """
+    Busca solicitações no MongoDB por número, palavra-chave na descrição ou centro de custo.
+    Retorna uma lista de objetos JSON.
+    """
     try:
         numero = request.GET.get("numero")
         palavra = request.GET.get("palavra")
@@ -113,28 +179,26 @@ def buscar_solicitacao(request):
             print(f"API - Buscando por número (exato): {numero}")
 
         if palavra:
-            query_params["descricao"] = {"$regex": palavra, "$options": "i"}
+            query_params["descricao"] = {"$regex": palavra, "$options": "i"} # Busca case-insensitive
             print(f"API - Buscando por descrição (contém): {palavra}")
 
         if centro_custo_busca:
             query_params["centro_custo"] = {"$regex": centro_custo_busca, "$options": "i"}
             print(f"API - Buscando por centro de custo (contém): {centro_custo_busca}")
 
-        solicitacoes = db.solicitacoes.find(query_params)
+        solicitacoes_cursor = db.solicitacoes.find(query_params)
         resultados = []
-        for solic in solicitacoes:
-            solic["_id"] = str(solic["_id"])
-            if 'data' in solic and isinstance(solic['data'], datetime):
-                solic['data'] = solic['data'].strftime('%Y-%m-%d %H:%M:%S')
-            if 'data_recebido' in solic and isinstance(solic['data_recebido'], datetime):
-                solic['data_recebido'] = solic['data_recebido'].strftime('%Y-%m-%d %H:%M:%S')
-            if 'data_criacao' in solic and isinstance(solic['data_criacao'], datetime):
-                solic['data_criacao'] = solic['data_criacao'].strftime('%Y-%m-%d %H:%M:%S')
+        for solic in solicitacoes_cursor:
+            solic["_id"] = str(solic["_id"]) # Converte ObjectId para string
+            # Formata objetos datetime para strings ISO 8601
+            for key, value in solic.items():
+                if isinstance(value, datetime):
+                    solic[key] = value.strftime('%Y-%m-%d %H:%M:%S')
             resultados.append(solic)
 
         if resultados:
             print(f"API - Encontrados {len(resultados)} resultados.")
-            return Response(resultados)
+            return Response(resultados, status=200)
 
         print("API - Nenhuma solicitação encontrada para os critérios.")
         return Response({"mensagem": "Nenhuma solicitação encontrada "
@@ -147,14 +211,18 @@ def buscar_solicitacao(request):
 
 @api_view(['PUT'])
 def atualizar_solicitacao(request, numero):
+    """
+    Atualiza uma solicitação existente no MongoDB pelo número.
+    Recebe dados JSON no corpo da requisição.
+    """
     try:
         data = request.data
 
         allowed_statuses = ["Recebido", "Aguardando", "Cancelada", "Reprovada"]
-        status = data.get("status")
-        if status and status not in allowed_statuses:
+        status_val = data.get("status")
+        if status_val and status_val not in allowed_statuses:
             return Response({"error": True,
-                             "message": f"Status '{status}' inválido. "
+                             "message": f"Status '{status_val}' inválido. "
                                         f"Use um dos seguintes: {', '.join(allowed_statuses)}."},
                             status=400)
 
@@ -175,10 +243,11 @@ def atualizar_solicitacao(request, numero):
                         "Formato de data inválido para 'data_recebido'. Use YYYY-MM-DD."},
                     status=400)
         else:
-            data['data_recebido'] = None
+            data['data_recebido'] = None # Garante que seja None se vazio
 
         update_data = {k: v for k, v in data.items() if v is not None and v != ''}
 
+        # Lógica para evitar duplicidade de número ao atualizar
         if 'numero' in update_data and update_data['numero'] != numero:
             if db.solicitacoes.find_one({"numero": update_data['numero']}):
                 return Response({"error": True,
@@ -196,7 +265,7 @@ def atualizar_solicitacao(request, numero):
             return Response({"mensagem": f"Solicitação com número {numero} não encontrada."}, status=404)
 
         print(f"API - Solicitação {numero} atualizada com sucesso.")
-        return Response({"mensagem": f"Solicitação {numero} atualizada com sucesso!"})
+        return Response({"mensagem": f"Solicitação {numero} atualizada com sucesso!"}, status=200)
 
     except Exception as e:
         print(f"API - Erro ao atualizar solicitação: {e}")
@@ -204,13 +273,17 @@ def atualizar_solicitacao(request, numero):
 
 @api_view(['DELETE'])
 def deletar_solicitacao(request, numero):
+    """
+    Deleta uma solicitação do MongoDB pelo número.
+    """
     print(f"API - Recebido para deletar: {numero}")
     try:
         resultado = db.solicitacoes.delete_one({"numero": numero})
 
         if resultado.deleted_count > 0:
             print(f"API - Solicitação {numero} deletada com sucesso.")
-            return Response({"mensagem": "Solicitação deletada com sucesso."})
+            return Response({"mensagem": "Solicitação deletada com sucesso."}, status=200) # 200 OK ou 204 No Content
+        
         print(f"API - Solicitação {numero} não encontrada para deleção.")
         return Response({"mensagem": "Solicitação não encontrada."}, status=404)
     except Exception as e:
@@ -218,26 +291,10 @@ def deletar_solicitacao(request, numero):
         return Response({"mensagem": f"Erro interno ao deletar: {str(e)}"}, status=500)
 
 @api_view(['GET'])
-def listar_solicitacoes(request):
-    print("API - Listando todas as solicitações.")
-    try:
-        solicitacoes = db.solicitacoes.find().sort("data_criacao", -1)
-        resultados = []
-        for solic in solicitacoes:
-            solic["_id"] = str(solic["_id"])
-            if 'data' in solic and isinstance(solic['data'], datetime):
-                solic['data'] = solic['data'].strftime('%Y-%m-%d %H:%M:%S')
-            if 'data_recebido' in solic and isinstance(solic['data_recebido'], datetime):
-                solic['data_recebido'] = solic['data_recebido'].strftime('%Y-%m-%d %H:%M:%S')
-            resultados.append(solic)
-        print(f"API - Retornando {len(resultados)} solicitações.")
-        return Response(resultados)
-    except Exception as e:
-        print(f"API - Erro ao listar solicitações: {e}")
-        return Response({"mensagem": f"Erro interno ao listar: {str(e)}"}, status=500)
-
-@api_view(['GET'])
 def gerar_pdf_solicitacao(request):
+    """
+    Gera um PDF para uma solicitação específica.
+    """
     try:
         numero = request.GET.get("numero")
         print(f"API - Gerando PDF para solicitação número: {numero}")
@@ -251,10 +308,12 @@ def gerar_pdf_solicitacao(request):
             print(f"API - Solicitação {numero} não encontrada para PDF.")
             return Response({"mensagem": "Solicitação não encontrada."}, status=404)
 
+        # Configuração da resposta HTTP para PDF
         response = HttpResponse(content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="solicitacao_{numero}.pdf"'
         p = canvas.Canvas(response, pagesize=A4)
 
+        # Conteúdo do PDF
         p.setFont("Helvetica-Bold", 14)
         p.drawString(100, 800, f"Solicitação Nº {solicitacao.get('numero', '')}")
 
@@ -281,18 +340,18 @@ def gerar_pdf_solicitacao(request):
 
         for campo in ordem_campos:
             valor = solicitacao.get(campo)
-            if campo == "data" and isinstance(valor, datetime):
-                valor = valor.strftime('%d/%m/%Y')
-            elif campo == "data_recebido" and isinstance(valor, datetime):
-                valor = valor.strftime('%d/%m/%Y')
-            elif campo == "data_criacao" and isinstance(valor, datetime):
-                valor = valor.strftime('%d/%m/%Y %H:%M:%S')
+            if isinstance(valor, datetime):
+                # Formata datas para exibição no PDF
+                if campo == "data_criacao":
+                    valor = valor.strftime('%d/%m/%Y %H:%M:%S')
+                else:
+                    valor = valor.strftime('%d/%m/%Y')
             elif valor is None:
                 valor = "-"
 
             p.drawString(100, y, f"{campos_exibicao.get(campo, campo.capitalize())}: {valor}")
             y -= 20
-            if y < 100:
+            if y < 100: # Nova página se o conteúdo exceder
                 p.showPage()
                 y = 800
                 p.setFont("Helvetica", 12)
@@ -306,50 +365,57 @@ def gerar_pdf_solicitacao(request):
         print(f"API - Erro ao gerar PDF: {e}")
         return Response({"mensagem": f"Erro interno ao gerar PDF: {str(e)}"}, status=500)
 
+## Funções do Frontend (Renderizam Páginas HTML)
+
+#Estas funções são responsáveis por processar as requisições do navegador e renderizar os templates HTML.
+
+#```python
 def home_page(request):
     print("FRONTEND - Acessando página inicial.")
     return render(request, 'pedidos/home.html')
 
 def pedido_list(request):
     print("FRONTEND - Acessando lista de pedidos.")
-    response_data = api_request('GET', '')
+    # Chama o endpoint da API interna para obter os dados em JSON
+    response_data = api_request('GET', '') 
 
-    if isinstance(response_data, dict) and response_data.get("error"):
+    pedidos = []
+    if isinstance(response_data, list):
+        for pedido in response_data:
+            # Garante que 'numero' sempre tenha um valor válido para o template
+            temp_numero = pedido.get('numero')
+            if not temp_numero:
+                temp_numero = str(pedido.get('_id', ''))
+            if not temp_numero:
+                temp_numero = 'INVALID_NUM'
+            pedido['numero'] = temp_numero # Atualiza o 'numero' no dicionário do pedido
+
+            # Formatar APENAS a data de criação para exibição no HTML
+            if 'data_criacao' in pedido and pedido['data_criacao']:
+                try:
+                    # A API envia 'YYYY-MM-DD HH:MM:SS', então parseamos assim
+                    dt_obj = datetime.strptime(pedido['data_criacao'], '%Y-%m-%d %H:%M:%S')
+                    pedido['data_criacao_formatada'] = dt_obj.strftime('%d/%m/%Y') # Ex: 23/06/2025
+                except (ValueError, TypeError):
+                    pedido['data_criacao_formatada'] = "Formato Inválido"
+            else:
+                pedido['data_criacao_formatada'] = 'N/A' # Se não houver data de criação ou for nula
+            
+            pedidos.append(pedido)
+    elif isinstance(response_data, dict) and response_data.get("error"):
         messages.error(request, response_data["message"])
         pedidos = []
     else:
-        pedidos = response_data
+        messages.error(request, "Erro inesperado na resposta da API ao listar pedidos.")
+        pedidos = []
+        print(f"Erro: Resposta da API não é uma lista nem um dict de erro: {response_data}")
 
-        if not isinstance(pedidos, list):
-            if isinstance(pedidos, dict):
-                pedidos = [pedidos]
-            else:
-                messages.error(request, "Erro inesperado na resposta da API.")
-                pedidos = []
-                print(f"Erro: Resposta da API não é um dict nem list: {response_data}")
-
-
-        for pedido in pedidos:
-            if 'data' in pedido and pedido['data']:
-                try:
-                    pedido['data'] = datetime.strptime(pedido['data'],
-                                                       '%Y-%m-%d %H:%M:%S').strftime('%d/%m/%Y')
-                except (ValueError, TypeError):
-                    pass
-            if 'data_recebido' in pedido and pedido['data_recebido']:
-                try:
-                    pedido['data_recebido'] = datetime.strptime(pedido['data_recebido'],
-                                                                '%Y-%m-%d %H:%M:%S').strftime('%d/%m/%Y')
-                except (ValueError, TypeError):
-                    pass
-            else:
-                pedido['data_recebido'] = "-"
-            if '_id' in pedido and 'numero' not in pedido:
-                 pedido['numero'] = pedido.get('numero', '')
-            elif 'numero' not in pedido:
-                 pedido['numero'] = ''
-
-    return render(request, 'pedidos/pedido_list.html', {'pedidos': pedidos})
+    context = {
+        'pedidos': pedidos,
+        'search_query': request.GET.get('search_query', ''),
+        'errors': {}, 
+    }
+    return render(request, 'pedidos/pedido_list.html', context)
 
 def pedido_create(request):
     print("FRONTEND - Acessando página de criação de pedidos.")
@@ -357,7 +423,7 @@ def pedido_create(request):
 
     if request.method == 'POST':
         new_data = {
-            "numero": request.POST.get('numero'),  # <--- Capturando o número digitado
+            "numero": request.POST.get('numero'), 
             "descricao": request.POST.get('descricao'),
             "solicitado_por": request.POST.get('solicitado_por'),
             "safra": request.POST.get('safra'),
@@ -401,27 +467,36 @@ def pedido_update(request, numero):
     print(f"FRONTEND - Acessando página de edição do pedido: {numero}")
     errors = {}
 
+    # Busca o pedido da API
     response_data = api_request('GET', f'buscar/?numero={numero}')
 
     pedido_data = {}
 
+    # Trata a resposta da API (pode vir como lista com um item, ou um dict único se a busca for exata)
     if isinstance(response_data, dict) and response_data.get("error"):
         messages.error(request, response_data.get("message", "Erro ao buscar pedido para edição."))
         return redirect('pedido_list')
-    elif isinstance(response_data, dict):
-        pedido_data = response_data
+    elif isinstance(response_data, dict) and not response_data.get("resultados"): # Se for um único dict e não tiver "resultados"
+         pedido_data = response_data
     elif isinstance(response_data, list) and response_data:
+        # Se vier uma lista, pegamos o primeiro item
         pedido_data = response_data[0]
+    elif isinstance(response_data, dict) and response_data.get("resultados"): # Se a API retornar com 'resultados'
+        if response_data['resultados']:
+            pedido_data = response_data['resultados'][0]
+        else:
+            messages.error(request, f"Pedido com número {numero} não encontrado.")
+            return redirect('pedido_list')
     else:
         messages.error(request, "Formato de dados inesperado da API ao buscar pedido.")
         return redirect('pedido_list')
-
 
     if not pedido_data:
         messages.error(request, f"Pedido com número {numero} não encontrado ou dados inválidos.")
         return redirect('pedido_list')
 
-    temp_numero = pedido_data.get('numero')  # Use pedido_data aqui
+    # Garantir que 'numero' exista, mesmo que seja 'INVALID_NUM'
+    temp_numero = pedido_data.get('numero') 
     if not temp_numero:
         temp_numero = str(pedido_data.get('_id', ''))
     if not temp_numero:
@@ -430,7 +505,6 @@ def pedido_update(request, numero):
                          f"Um pedido sem número ou "
                          f"_id válido foi encontrado para edição. ID: {pedido_data.get('_id', 'N/A')}")
     pedido_data['numero'] = temp_numero
-    # --- FIM DA CORREÇÃO ---
 
     if request.method == 'POST':
         updated_data = {
@@ -453,9 +527,8 @@ def pedido_update(request, numero):
 
         if errors:
             messages.error(request, "Por favor, corrija os erros no formulário.")
-            # Ao renderizar o form com erros do POST, use os dados do POST
             return render(request, 'pedidos/pedido_form.html',
-                          {'pedido': updated_data, 'errors': errors})  # Use updated_data aqui
+                          {'pedido': updated_data, 'errors': errors})
 
         data_to_send = {}
         for k, v in updated_data.items():
@@ -469,30 +542,30 @@ def pedido_update(request, numero):
         if response_data_update.get("error"):
             messages.error(request, response_data_update["message"])
             return render(request, 'pedidos/pedido_form.html',
-                          {'pedido': updated_data, 'errors': errors})  # Use updated_data aqui
+                          {'pedido': updated_data, 'errors': errors})
         else:
             messages.success(request, response_data_update["mensagem"])
+            # Se o número foi alterado, redireciona para o novo número na URL
+            if updated_data['numero'] != numero:
+                return redirect('pedido_update', numero=updated_data['numero'])
             return redirect('pedido_list')
 
-    # Para GET: Formatar as datas para o input type="date"
-    # A linha 479 (ou próxima) está aqui:
-    if 'data' in pedido_data and pedido_data['data']:  # Use pedido_data aqui
+    # Para GET: Formatar as datas para o input type="date" (YYYY-MM-DD)
+    if 'data' in pedido_data and pedido_data['data']:
         try:
-            pedido_data['data'] = datetime.strptime(pedido_data['data'],
-                                                    '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d')
+            # A API retorna no formato '%Y-%m-%d %H:%M:%S', precisamos para '%Y-%m-%d' para input type=date
+            pedido_data['data'] = datetime.strptime(pedido_data['data'], '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d')
         except (ValueError, TypeError):
             pass
-    if 'data_recebido' in pedido_data and pedido_data['data_recebido']:  # Use pedido_data aqui
+    if 'data_recebido' in pedido_data and pedido_data['data_recebido']:
         try:
-            pedido_data['data_recebido'] = datetime.strptime(pedido_data['data_recebido'],
-                                                             '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d')
+            pedido_data['data_recebido'] = datetime.strptime(pedido_data['data_recebido'], '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d')
         except (ValueError, TypeError):
             pass
     else:
-        pedido_data['data_recebido'] = ""
+        pedido_data['data_recebido'] = "" # Garante que o campo esteja vazio se for None
 
-    return render(request, 'pedidos/pedido_form.html',
-                  {'pedido': pedido_data, 'errors': errors})  # Passe pedido_data para o template
+    return render(request, 'pedidos/pedido_form.html', {'pedido': pedido_data, 'errors': errors})
 
 
 def pedido_delete(request, numero):
@@ -504,17 +577,23 @@ def pedido_delete(request, numero):
     if isinstance(response_data, dict) and response_data.get("error"):
         messages.error(request, response_data.get("message", "Erro ao buscar pedido para exclusão."))
         return redirect('pedido_list')
-    elif isinstance(response_data, dict):
-        pedido = response_data
+    elif isinstance(response_data, dict) and not response_data.get("resultados"):
+         pedido = response_data
     elif isinstance(response_data, list) and response_data:
         pedido = response_data[0]
+    elif isinstance(response_data, dict) and response_data.get("resultados"):
+        if response_data['resultados']:
+            pedido = response_data['resultados'][0]
+        else:
+            messages.error(request, f"Pedido com número {numero} não encontrado.")
+            return redirect('pedido_list')
     else:
         messages.error(request, "Formato de dados inesperado da API ao buscar pedido para exclusão.")
         return redirect('pedido_list')
 
     if not pedido:
         messages.error(request, f"Pedido com número {numero} "
-                                f"não encontrado ou dados inválidos para exclusão.")
+                                 f"não encontrado ou dados inválidos para exclusão.")
         return redirect('pedido_list')
 
     temp_numero = pedido.get('numero')
@@ -536,6 +615,7 @@ def pedido_delete(request, numero):
         return redirect('pedido_list')
 
     return render(request, 'pedidos/pedido_confirm_delete.html', {'pedido': pedido})
+
 def pedido_search(request):
     print("FRONTEND - Acessando página de busca de pedidos.")
     query = request.GET.get('q', '')
@@ -563,44 +643,41 @@ def pedido_search(request):
     if isinstance(response_data, dict) and response_data.get("error"):
         messages.info(request, response_data.get("message", "Nenhum resultado encontrado para sua busca."))
         pedidos = []
-    else:
+    elif isinstance(response_data, dict) and response_data.get("resultados"): # Se a API retornar com 'resultados'
+        pedidos = response_data['resultados']
+        if not pedidos: # Se a lista de resultados estiver vazia
+            messages.info(request, response_data.get("mensagem", "Nenhum resultado encontrado para sua busca."))
+    elif isinstance(response_data, list): # Se a API retornar uma lista diretamente
         pedidos = response_data
-        if not isinstance(pedidos, list):
-            if isinstance(pedidos, dict):
-                pedidos = [pedidos]
-            else:
-                messages.error(request, "Erro inesperado na resposta da API.")
-                pedidos = []
-                print(f"Erro: Resposta da API não é um dict nem list: {response_data}")
+    else:
+        messages.error(request, "Erro inesperado na resposta da API.")
+        pedidos = []
+        print(f"Erro: Resposta da API não é um dict nem list: {response_data}")
 
-        for pedido in pedidos:
-            if 'data' in pedido and pedido['data']:
-                try:
-                    pedido['data'] = datetime.strptime(pedido['data'],
-                                                       '%Y-%m-%d %H:%M:%S').strftime('%d/%m/%Y')
-                except (ValueError, TypeError):
-                    pass
-            if 'data_recebido' in pedido and pedido['data_recebido']:
-                try:
-                    pedido['data_recebido'] = datetime.strptime(pedido['data_recebido'],
-                                                                '%Y-%m-%d %H:%M:%S').strftime(
-                        '%d/%m/%Y')
-                except (ValueError, TypeError):
-                    pass
-            else:
-                pedido['data_recebido'] = "-"
+    for pedido in pedidos:
+        if 'data' in pedido and pedido['data']:
+            try:
+                # API retorna %Y-%m-%d %H:%M:%S, formatamos para %d/%m/%Y para exibição
+                pedido['data'] = datetime.strptime(pedido['data'], '%Y-%m-%d %H:%M:%S').strftime('%d/%m/%Y')
+            except (ValueError, TypeError):
+                pass
+        if 'data_recebido' in pedido and pedido['data_recebido']:
+            try:
+                pedido['data_recebido'] = datetime.strptime(pedido['data_recebido'], '%Y-%m-%d %H:%M:%S').strftime('%d/%m/%Y')
+            except (ValueError, TypeError):
+                pass
+        else:
+            pedido['data_recebido'] = "-"
 
-            temp_numero = pedido.get('numero')
-            if not temp_numero:
-                temp_numero = str(pedido.get('_id', ''))
+        temp_numero = pedido.get('numero')
+        if not temp_numero:
+            temp_numero = str(pedido.get('_id', ''))
+        if not temp_numero:
+            temp_numero = 'INVALID_NUM' 
+            messages.warning(request,
+                             f"Um pedido sem número ou "
+                             f"_id válido foi encontrado. ID: {pedido.get('_id', 'N/A')}")
+        pedido['numero'] = temp_numero
 
-            if not temp_numero:
-                temp_numero = 'INVALID_NUM'  # Um valor que não é vazio e indica um problema
-                messages.warning(request,
-                                 f"Um pedido sem número ou "
-                                 f"_id válido foi encontrado. ID: {pedido.get('_id', 'N/A')}")
-
-            pedido['numero'] = temp_numero
-
-        return render(request, 'pedidos/pedido_search_results.html',
-                      {'pedidos': pedidos, 'query': query, 'centro_custo_query': centro_custo_query})
+    return render(request, 'pedidos/pedido_search_results.html',
+                  {'pedidos': pedidos, 'query': query, 'centro_custo_query': centro_custo_query})
