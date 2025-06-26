@@ -12,11 +12,10 @@ from reportlab.pdfgen import canvas
 from django.http import HttpResponse
 from bson.objectid import ObjectId # Importar ObjectId para lidar com IDs do MongoDB
 
-# --- Configuração da URL base da API ---
-# A API e o frontend estão no mesmo projeto/servidor, então a porta é a mesma (8000)
+
 BASE_API_URL = "http://127.0.0.1:8000/api/solicitacoes/"
 
-# --- Função auxiliar para requisições à API (chamando a si mesma) ---
+
 def api_request(method, endpoint, data=None, params=None):
     full_url = f"{BASE_API_URL}{endpoint}"
 
@@ -33,7 +32,6 @@ def api_request(method, endpoint, data=None, params=None):
         else:
             raise ValueError("Método HTTP não suportado pela função api_request.")
         
-        # Levanta um HTTPError para respostas de status 4xx/5xx
         response.raise_for_status() 
         return response.json()
 
@@ -53,46 +51,49 @@ def api_request(method, endpoint, data=None, params=None):
 
 
 
-## Funções de API (Endpoints REST)
 
-#Estas funções são destinadas a serem chamadas por outros serviços ou pelo seu próprio frontend via `api_request`. Elas retornam dados JSON.
-
-#```python
 
 @api_view(['GET'])
 def listar_solicitacoes(request):
-    """
-    Lista todas as solicitações do MongoDB, ordenadas pelas mais recentes primeiro.
-    Retorna uma lista de objetos JSON.
-    """
+   
     try:
-        # Adiciona .sort('data_criacao', -1) para ordenar por 'data_criacao'
-        # em ordem decrescente (-1 para mais recente primeiro)
-        solicitacoes_cursor = db.solicitacoes.find({}).sort('data_criacao', -1)
+        # Parâmetros de paginação
+        page = int(request.GET.get('page', 1))
+        page_size = int(request.GET.get('page_size', 10))
+        if page < 1:
+            page = 1
+        if page_size < 1 or page_size > 100:
+            page_size = 10
+
+        skip = (page - 1) * page_size
+
+        total = db.solicitacoes.count_documents({})
+        solicitacoes_cursor = db.solicitacoes.find({}).sort('data_criacao', -1).skip(skip).limit(page_size)
         solicitacoes_list = []
         for doc in solicitacoes_cursor:
-            # Converte ObjectId para string para JSON
             doc['_id'] = str(doc['_id'])
-
-            # Formata objetos datetime para strings ISO 8601 para JSON
             for key, value in doc.items():
                 if isinstance(value, datetime):
                     doc[key] = value.strftime('%Y-%m-%d %H:%M:%S')
-
             solicitacoes_list.append(doc)
 
-        return Response(solicitacoes_list, status=200)
+        return Response({
+            "results": solicitacoes_list,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": (total + page_size - 1) // page_size
+        }, status=200)
 
     except Exception as e:
         print(f"API - Erro ao listar solicitações: {e}")
         return Response({"mensagem": f"Erro interno ao listar solicitações: {str(e)}"}, status=500)
 
+
+
 @api_view(['POST'])
 def criar_solicitacao(request):
-    """
-    Cria uma nova solicitação no MongoDB.
-    Recebe dados JSON no corpo da requisição.
-    """
+   
     try:
         data = request.data # request.data é usado para dados JSON/form no DRF
 
@@ -109,8 +110,7 @@ def criar_solicitacao(request):
             if not data.get(field):
                 return Response({"error": True, "message": f"O campo '{field}' é obrigatório."}, status=400)
 
-        # --- AQUI ESTÁ A CORREÇÃO PRINCIPAL ---
-        # A validação agora checa se existe uma solicitação com o MESMO NÚMERO E a MESMA SAFRA.
+        
         existing_solicitation = db.solicitacoes.find_one({
             "numero": data["numero"],
             "safra": data["safra"]
@@ -121,10 +121,8 @@ def criar_solicitacao(request):
                              "message": f"Já existe uma solicitação com o número '{data['numero']}' "
                                         f"para a safra '{data['safra']}'. Por favor, verifique ou use outra combinação."},
                             status=409) # 409 Conflict - indica conflito de recurso
-        # --- FIM DA CORREÇÃO ---
+       
 
-
-        # Converter strings de data para objetos datetime, se existirem
         if 'data' in data and isinstance(data['data'], str):
             try:
                 data['data'] = datetime.strptime(data['data'], '%Y-%m-%d')
@@ -160,10 +158,8 @@ def criar_solicitacao(request):
 
 @api_view(['GET'])
 def buscar_solicitacao(request):
-    """
-    Busca solicitações no MongoDB por número, palavra-chave na descrição ou centro de custo.
-    Retorna uma lista de objetos JSON.
-    """
+    
+   
     try:
         numero = request.GET.get("numero")
         palavra = request.GET.get("palavra")
@@ -189,8 +185,8 @@ def buscar_solicitacao(request):
         solicitacoes_cursor = db.solicitacoes.find(query_params)
         resultados = []
         for solic in solicitacoes_cursor:
-            solic["_id"] = str(solic["_id"]) # Converte ObjectId para string
-            # Formata objetos datetime para strings ISO 8601
+            solic["_id"] = str(solic["_id"])
+            
             for key, value in solic.items():
                 if isinstance(value, datetime):
                     solic[key] = value.strftime('%Y-%m-%d %H:%M:%S')
@@ -209,12 +205,12 @@ def buscar_solicitacao(request):
         print(f"API - Erro ao buscar no MongoDB: {e}")
         return Response({"mensagem": f"Erro interno ao buscar: {str(e)}"}, status=500)
 
+
+
+
 @api_view(['PUT'])
 def atualizar_solicitacao(request, numero):
-    """
-    Atualiza uma solicitação existente no MongoDB pelo número.
-    Recebe dados JSON no corpo da requisição.
-    """
+    
     try:
         data = request.data
 
@@ -273,9 +269,7 @@ def atualizar_solicitacao(request, numero):
 
 @api_view(['DELETE'])
 def deletar_solicitacao(request, numero):
-    """
-    Deleta uma solicitação do MongoDB pelo número.
-    """
+   
     print(f"API - Recebido para deletar: {numero}")
     try:
         resultado = db.solicitacoes.delete_one({"numero": numero})
@@ -292,9 +286,7 @@ def deletar_solicitacao(request, numero):
 
 @api_view(['GET'])
 def gerar_pdf_solicitacao(request):
-    """
-    Gera um PDF para uma solicitação específica.
-    """
+    
     try:
         numero = request.GET.get("numero")
         print(f"API - Gerando PDF para solicitação número: {numero}")
@@ -365,43 +357,43 @@ def gerar_pdf_solicitacao(request):
         print(f"API - Erro ao gerar PDF: {e}")
         return Response({"mensagem": f"Erro interno ao gerar PDF: {str(e)}"}, status=500)
 
-## Funções do Frontend (Renderizam Páginas HTML)
 
-#Estas funções são responsáveis por processar as requisições do navegador e renderizar os templates HTML.
-
-#```python
 def home_page(request):
     print("FRONTEND - Acessando página inicial.")
     return render(request, 'pedidos/home.html')
 
 def pedido_list(request):
     print("FRONTEND - Acessando lista de pedidos.")
-    # Chama o endpoint da API interna para obter os dados em JSON
-    response_data = api_request('GET', '') 
+    
+    page = int(request.GET.get('page', 1))
+    page_size = int(request.GET.get('page_size', 10))
+
+    response_data = api_request('GET', '', params={'page': page, 'page_size': page_size})
 
     pedidos = []
-    if isinstance(response_data, list):
-        for pedido in response_data:
-            # Garante que 'numero' sempre tenha um valor válido para o template
+    total = 0
+    total_pages = 1
+
+    if isinstance(response_data, dict) and "results" in response_data:
+        for pedido in response_data["results"]:
             temp_numero = pedido.get('numero')
             if not temp_numero:
                 temp_numero = str(pedido.get('_id', ''))
             if not temp_numero:
                 temp_numero = 'INVALID_NUM'
-            pedido['numero'] = temp_numero # Atualiza o 'numero' no dicionário do pedido
+            pedido['numero'] = temp_numero
 
-            # Formatar APENAS a data de criação para exibição no HTML
             if 'data_criacao' in pedido and pedido['data_criacao']:
                 try:
-                    # A API envia 'YYYY-MM-DD HH:MM:SS', então parseamos assim
                     dt_obj = datetime.strptime(pedido['data_criacao'], '%Y-%m-%d %H:%M:%S')
-                    pedido['data_criacao_formatada'] = dt_obj.strftime('%d/%m/%Y') # Ex: 23/06/2025
+                    pedido['data_criacao_formatada'] = dt_obj.strftime('%d/%m/%Y')
                 except (ValueError, TypeError):
                     pedido['data_criacao_formatada'] = "Formato Inválido"
             else:
-                pedido['data_criacao_formatada'] = 'N/A' # Se não houver data de criação ou for nula
-            
+                pedido['data_criacao_formatada'] = 'N/A'
             pedidos.append(pedido)
+        total = response_data.get('total', 0)
+        total_pages = response_data.get('total_pages', 1)
     elif isinstance(response_data, dict) and response_data.get("error"):
         messages.error(request, response_data["message"])
         pedidos = []
@@ -413,9 +405,18 @@ def pedido_list(request):
     context = {
         'pedidos': pedidos,
         'search_query': request.GET.get('search_query', ''),
-        'errors': {}, 
+        'errors': {},
+        'page': page,
+        'page_size': page_size,
+        'total': total,
+        'total_pages': total_pages,
+        'has_previous': page > 1,
+        'has_next': page < total_pages,
+        'previous_page': page - 1,
+        'next_page': page + 1,
     }
     return render(request, 'pedidos/pedido_list.html', context)
+
 
 def pedido_create(request):
     print("FRONTEND - Acessando página de criação de pedidos.")
@@ -495,7 +496,7 @@ def pedido_update(request, numero):
         messages.error(request, f"Pedido com número {numero} não encontrado ou dados inválidos.")
         return redirect('pedido_list')
 
-    # Garantir que 'numero' exista, mesmo que seja 'INVALID_NUM'
+    
     temp_numero = pedido_data.get('numero') 
     if not temp_numero:
         temp_numero = str(pedido_data.get('_id', ''))
