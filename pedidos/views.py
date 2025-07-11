@@ -50,9 +50,6 @@ def api_request(method, endpoint, data=None, params=None):
         return {"error": True, "message": f"Erro de conexão com a API: {e}"}
 
 
-
-
-
 @api_view(['GET'])
 def listar_solicitacoes(request):
    
@@ -88,7 +85,6 @@ def listar_solicitacoes(request):
     except Exception as e:
         print(f"API - Erro ao listar solicitações: {e}")
         return Response({"mensagem": f"Erro interno ao listar solicitações: {str(e)}"}, status=500)
-
 
 
 @api_view(['POST'])
@@ -158,8 +154,6 @@ def criar_solicitacao(request):
 
 @api_view(['GET'])
 def buscar_solicitacao(request):
-    
-   
     try:
         numero = request.GET.get("numero")
         palavra = request.GET.get("palavra")
@@ -206,11 +200,8 @@ def buscar_solicitacao(request):
         return Response({"mensagem": f"Erro interno ao buscar: {str(e)}"}, status=500)
 
 
-
-
 @api_view(['PUT'])
 def atualizar_solicitacao(request, numero):
-    
     try:
         data = request.data
 
