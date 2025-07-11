@@ -1,3 +1,6 @@
+
+
+
 {% extends 'base.html' %}
 
 {% block title %}Lista de Solicitações{% endblock %}
@@ -19,6 +22,19 @@
     </form>
 </div>
 
+<!-- Formulário para gerar relatório Excel mensal -->
+
+
+<form action="{% url 'api_gerar_excel_relatorio_mensal' %}" method="get" target="_blank" class="mb-4">
+    <div class="input-group input-group-sm w-auto">
+        <span class="input-group-text"><i class="bi bi-calendar-date"></i></span>
+        <input type="text" id="mesAno" class="form-control" placeholder="Selecione Mês/Ano" required>
+        <button type="submit" class="btn btn-info">
+            <i class="bi bi-file-earmark-excel"></i> Gerar Relatório
+        </button>
+    </div>
+</form>
+
 {% if messages %}
     <ul class="messages list-unstyled">
         {% for message in messages %}
@@ -33,13 +49,12 @@
         <thead class="table-dark">
             <tr>
                 <th>Número</th>
-                <th>Data</th> {# NOVA COLUNA PARA A DATA DE CRIAÇÃO #}
+                <th>Data</th>
                 <th>Descrição</th>
                 <th>Solicitado</th>
                 <th>Safra</th>
                 <th>Centro Custo</th>
                 <th>Status</th>
-               
                 <th class="text-center">Ações</th>
             </tr>
         </thead>
@@ -47,13 +62,12 @@
             {% for pedido in pedidos %}
             <tr>
                 <td>{{ pedido.numero }}</td>
-                <td>{{ pedido.data_criacao_formatada|default:"N/A" }}</td> {# Exibindo a data de criação formatada #}
+                <td>{{ pedido.data_criacao_formatada|default:"N/A" }}</td>
                 <td>{{ pedido.descricao }}</td>
                 <td>{{ pedido.solicitado_por }}</td>
                 <td>{{ pedido.safra }}</td>
                 <td>{{ pedido.centro_custo }}</td>
                 <td>{{ pedido.status }}</td>
-               
                 <td class="text-center">
                     <a href="{% url 'pedido_update' pedido.numero %}" class="btn btn-sm btn-warning me-1">
                         <i class="bi bi-pencil"></i> Editar
@@ -61,14 +75,11 @@
                     <a href="{% url 'pedido_delete' pedido.numero %}" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza que deseja excluir este pedido?');">
                         <i class="bi bi-trash"></i> Excluir
                     </a>
-                    <a href="{% url 'api_gerar_pdf_solicitacao' %}?numero={{ pedido.numero }}" class="btn btn-sm btn-info" target="_blank">
-                        <i class="bi bi-file-earmark-pdf"></i> PDF
-                    </a>
                 </td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="9" class="text-center">Nenhum pedido encontrado.</td> {# Colspan atualizado para 9 colunas #}
+                <td colspan="9" class="text-center">Nenhum pedido encontrado.</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -89,9 +100,7 @@
             {% endif %}
 
             <li class="page-item active">
-                <span class="page-link">
-                    Página {{ page }} de {{ total_pages }}
-                </span>
+                <span class="page-link">Página {{ page }} de {{ total_pages }}</span>
             </li>
 
             {% if has_next %}

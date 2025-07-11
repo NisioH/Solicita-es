@@ -19,10 +19,8 @@ urlpatterns = [
     path('api/solicitacoes/buscar/', views.buscar_solicitacao, name='api_buscar_solicitacao'),
     path('api/solicitacoes/atualizar/<str:numero>/', views.atualizar_solicitacao, name='api_atualizar_solicitacao'),
     path('api/solicitacoes/deletar/<str:numero>/', views.deletar_solicitacao, name='api_deletar_solicitacao'),
-    path('api/solicitacoes/pdf/', views.gerar_pdf_solicitacao, name='api_gerar_pdf_solicitacao'),
+    path('api/solicitacoes/excel/', views.gerar_excel_relatorio_mensal, name='api_gerar_excel_relatorio_mensal'),
+   # path('api/solicitacoes/pdf/', views.gerar_pdf_solicitacao, name='api_gerar_pdf_solicitacao'),
 
-    # --- Rotas do Frontend (Renderizam HTML) ---
-    # Inclui todas as URLs definidas no seu 'pedidos/urls.py'
-    # É aqui que 'pedido_list' (a que renderiza HTML) será mapeada.
     path('', include('pedidos.urls')),
 ]

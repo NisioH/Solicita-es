@@ -275,6 +275,7 @@ def deletar_solicitacao(request, numero):
         print(f"API - Erro ao deletar solicitação: {e}")
         return Response({"mensagem": f"Erro interno ao deletar: {str(e)}"}, status=500)
 
+""" 
 @api_view(['GET'])
 def gerar_pdf_solicitacao(request):
     
@@ -346,7 +347,76 @@ def gerar_pdf_solicitacao(request):
 
     except Exception as e:
         print(f"API - Erro ao gerar PDF: {e}")
-        return Response({"mensagem": f"Erro interno ao gerar PDF: {str(e)}"}, status=500)
+        return Response({"mensagem": f"Erro interno ao gerar PDF: {str(e)}"}, status=500) """
+
+
+""" from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from django.http import HttpResponse
+from openpyxl import Workbook
+from datetime import datetime """
+
+
+from django.http import HttpResponse
+from openpyxl import Workbook
+from datetime import datetime
+
+def gerar_excel_relatorio_mensal(request):
+    try:
+        mes = request.GET.get("mes")  # Ex: '07' para julho
+        ano = request.GET.get("ano")  # Ex: '2025'
+
+        if not mes or not ano:
+            return HttpResponse("Informe o mês e ano para gerar o relatório.", status=400)
+
+        print(f"API - Gerando relatório para {mes}/{ano}")
+
+        # Buscar todas as solicitações do mês e ano
+        inicio = datetime(int(ano), int(mes), 1)
+        fim = datetime(int(ano), int(mes) + 1, 1) if int(mes) < 12 else datetime(int(ano)+1, 1, 1)
+
+        solicitacoes = db.solicitacoes.find({
+            "data_criacao": {"$gte": inicio, "$lt": fim}
+        })
+
+        # Criação do Excel
+        wb = Workbook()
+        ws = wb.active
+        ws.title = f"Solicitações_{mes}_{ano}"
+
+        # Cabeçalhos
+        campos = ["Número", "Descrição", "Solicitado Por", "Safra", "Centro de Custo",
+                  "Status", "Data da Solicitação", "Data Recebido", "Fornecedor",
+                  "Nota Fiscal", "Data de Criação"]
+        ws.append(campos)
+
+        for s in solicitacoes:
+            linha = [
+                s.get("numero", ""),
+                s.get("descricao", ""),
+                s.get("solicitado_por", ""),
+                s.get("safra", ""),
+                s.get("centro_custo", ""),
+                s.get("status", ""),
+                s.get("data", "").strftime('%d/%m/%Y') if isinstance(s.get("data"), datetime) else "",
+                s.get("data_recebido", "").strftime('%d/%m/%Y') if isinstance(s.get("data_recebido"), datetime) else "",
+                s.get("fornecedor", ""),
+                s.get("nota_fiscal", ""),
+                s.get("data_criacao", "").strftime('%d/%m/%Y %H:%M:%S') if isinstance(s.get("data_criacao"), datetime) else ""
+            ]
+            ws.append(linha)
+
+        # Resposta HTTP com arquivo Excel
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        filename = f"relatorio_solicitacoes_{mes}_{ano}.xlsx"
+        response['Content-Disposition'] = f'attachment; filename={filename}'
+        wb.save(response)
+        print(f"API - Relatório gerado para {mes}/{ano}.")
+        return response
+
+    except Exception as e:
+        print(f"API - Erro ao gerar Excel: {e}")
+        return HttpResponse(f"Erro interno ao gerar Excel: {str(e)}", status=500)
 
 
 def home_page(request):

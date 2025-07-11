@@ -16,7 +16,9 @@
         .errorlist { color: #dc3545; list-style-type: none; padding: 0; margin-top: 5px; font-size: 0.9em; }
         .errorlist li { margin-bottom: 3px; }
     </style>
-    {% block extra_css %}{% endblock %}
+    {% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-datepicker@1.10.0/dist/css/bootstrap-datepicker3.min.css">
+{% endblock %}
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
@@ -53,6 +55,31 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    {% block extra_js %}{% endblock %}
+    {% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap-datepicker@1.10.0/dist/js/bootstrap-datepicker.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap-datepicker@1.10.0/dist/locales/bootstrap-datepicker.pt-BR.min.js"></script>
+
+<script>
+    $(document).ready(function () {
+        $('#mesAno').datepicker({
+            format: "mm/yyyy",
+            startView: "months",
+            minViewMode: "months",
+            autoclose: true,
+            language: "pt-BR"
+        });
+
+        $('form').on('submit', function (e) {
+            const valor = $('#mesAno').val();
+            if (valor.includes('/')) {
+                const [mes, ano] = valor.split('/');
+                $('<input>').attr({type: 'hidden', name: 'mes', value: mes}).appendTo(this);
+                $('<input>').attr({type: 'hidden', name: 'ano', value: ano}).appendTo(this);
+            }
+        });
+    });
+</script>
+{% endblock %}
 </body>
 </html>
