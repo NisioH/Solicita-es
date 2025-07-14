@@ -679,7 +679,7 @@ def pedido_delete(request, numero):
     return render(request, 'pedidos/pedido_confirm_delete.html', {'pedido': pedido})
 
 def pedido_search(request):
-    print("FRONTEND - Acessando página de busca de pedidos.")
+    
     query = request.GET.get('q', '')
     centro_custo_query = request.GET.get('centro_custo', '')
 

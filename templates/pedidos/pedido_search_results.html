@@ -59,9 +59,7 @@
                     <a href="{% url 'pedido_delete' pedido.numero %}" class="btn btn-sm btn-danger">
                         <i class="bi bi-trash"></i> Excluir
                     </a>
-                    <a href="{% url 'api_gerar_pdf_solicitacao' %}?numero={{ pedido.numero }}" class="btn btn-sm btn-info" target="_blank">
-                        <i class="bi bi-file-earmark-pdf"></i> PDF
-                    </a>
+                   
                 </td>
             </tr>
             {% endfor %}
