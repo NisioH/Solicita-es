@@ -151,7 +151,7 @@ def criar_solicitacao(request):
         print(f"API - Erro ao criar solicitação: {e}")
         return Response({"mensagem": f"Erro interno ao criar solicitação: {str(e)}"}, status=500)
 
-
+""" 
 @api_view(['GET'])
 def buscar_solicitacao(request):
     try:
@@ -198,7 +198,62 @@ def buscar_solicitacao(request):
     except Exception as e:
         print(f"API - Erro ao buscar no MongoDB: {e}")
         return Response({"mensagem": f"Erro interno ao buscar: {str(e)}"}, status=500)
+ """
 
+@api_view(['GET'])
+def buscar_solicitacao(request):
+    try:
+        numero = request.GET.get("numero")
+        palavra = request.GET.get("palavra")
+        centro_custo_busca = request.GET.get("centro_custo")
+        status_busca = request.GET.get("status")
+
+        if not numero and not palavra and not centro_custo_busca and not status_busca:
+            return Response({"mensagem": "Informe um número, palavra-chave, centro de custo ou status para a busca."},
+                            status=400)
+
+        query_params = {}
+
+        if numero:
+            query_params["numero"] = numero
+            print(f"API - Buscando por número (exato): {numero}")
+
+        if palavra:
+            query_params["descricao"] = {"$regex": palavra, "$options": "i"}
+            print(f"API - Buscando por descrição (contém): {palavra}")
+
+        if centro_custo_busca:
+            query_params["centro_custo"] = {"$regex": centro_custo_busca, "$options": "i"}
+            print(f"API - Buscando por centro de custo (contém): {centro_custo_busca}")
+
+        if status_busca:
+            status_opcoes = ["Recebido", "Aguardando", "Cancelada", "Reprovada"]
+            if status_busca not in status_opcoes:
+                return Response({"mensagem": f"Status inválido. Use um dos seguintes: {', '.join(status_opcoes)}"},
+                                status=400)
+            query_params["status"] = status_busca
+            print(f"API - Buscando por status (exato): {status_busca}")
+
+        solicitacoes_cursor = db.solicitacoes.find(query_params)
+        resultados = []
+        for solic in solicitacoes_cursor:
+            solic["_id"] = str(solic["_id"])
+            for key, value in solic.items():
+                if isinstance(value, datetime):
+                    solic[key] = value.strftime('%Y-%m-%d %H:%M:%S')
+            resultados.append(solic)
+
+        if resultados:
+            print(f"API - Encontrados {len(resultados)} resultados.")
+            return Response(resultados, status=200)
+
+        print("API - Nenhuma solicitação encontrada para os critérios.")
+        return Response({"mensagem": "Nenhuma solicitação encontrada para os critérios informados.",
+                         "resultados": []}, status=200)
+
+    except Exception as e:
+        print(f"API - Erro ao buscar no MongoDB: {e}")
+        return Response({"mensagem": f"Erro interno ao buscar: {str(e)}"}, status=500)
 
 @api_view(['PUT'])
 def atualizar_solicitacao(request, numero):
@@ -274,87 +329,6 @@ def deletar_solicitacao(request, numero):
     except Exception as e:
         print(f"API - Erro ao deletar solicitação: {e}")
         return Response({"mensagem": f"Erro interno ao deletar: {str(e)}"}, status=500)
-
-""" 
-@api_view(['GET'])
-def gerar_pdf_solicitacao(request):
-    
-    try:
-        numero = request.GET.get("numero")
-        print(f"API - Gerando PDF para solicitação número: {numero}")
-
-        if not numero:
-            return Response({"mensagem": "Informe um número para gerar o PDF."}, status=400)
-
-        solicitacao = db.solicitacoes.find_one({"numero": numero})
-
-        if not solicitacao:
-            print(f"API - Solicitação {numero} não encontrada para PDF.")
-            return Response({"mensagem": "Solicitação não encontrada."}, status=404)
-
-        # Configuração da resposta HTTP para PDF
-        response = HttpResponse(content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="solicitacao_{numero}.pdf"'
-        p = canvas.Canvas(response, pagesize=A4)
-
-        # Conteúdo do PDF
-        p.setFont("Helvetica-Bold", 14)
-        p.drawString(100, 800, f"Solicitação Nº {solicitacao.get('numero', '')}")
-
-        p.setFont("Helvetica", 12)
-        y = 780
-        campos_exibicao = {
-            "numero": "Número",
-            "descricao": "Descrição",
-            "solicitado_por": "Solicitado Por",
-            "safra": "Safra",
-            "centro_custo": "Centro de Custo",
-            "status": "Status",
-            "data": "Data da Solicitação",
-            "data_recebido": "Data Recebido",
-            "fornecedor": "Fornecedor",
-            "nota_fiscal": "Nota Fiscal",
-            "data_criacao": "Data de Criação"
-        }
-
-        ordem_campos = [
-            "numero", "descricao", "solicitado_por", "safra", "centro_custo",
-            "status", "data", "data_recebido", "fornecedor", "nota_fiscal", "data_criacao"
-        ]
-
-        for campo in ordem_campos:
-            valor = solicitacao.get(campo)
-            if isinstance(valor, datetime):
-                # Formata datas para exibição no PDF
-                if campo == "data_criacao":
-                    valor = valor.strftime('%d/%m/%Y %H:%M:%S')
-                else:
-                    valor = valor.strftime('%d/%m/%Y')
-            elif valor is None:
-                valor = "-"
-
-            p.drawString(100, y, f"{campos_exibicao.get(campo, campo.capitalize())}: {valor}")
-            y -= 20
-            if y < 100: # Nova página se o conteúdo exceder
-                p.showPage()
-                y = 800
-                p.setFont("Helvetica", 12)
-
-        p.showPage()
-        p.save()
-        print(f"API - PDF gerado para solicitação {numero}.")
-        return response
-
-    except Exception as e:
-        print(f"API - Erro ao gerar PDF: {e}")
-        return Response({"mensagem": f"Erro interno ao gerar PDF: {str(e)}"}, status=500) """
-
-
-""" from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from django.http import HttpResponse
-from openpyxl import Workbook
-from datetime import datetime """
 
 
 from django.http import HttpResponse
