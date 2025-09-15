@@ -223,7 +223,7 @@ def buscar_solicitacao(request):
             query_params["centro_custo"] = {"$regex": centro_custo_busca, "$options": "i"}
             print(f"API - Buscando por centro de custo (contém): {centro_custo_busca}")
 
-        if status_busca:
+        if status_busca and status_busca.strip():
             status_opcoes = ["Recebido", "Aguardando", "Cancelada", "Reprovada"]
             if status_busca not in status_opcoes:
                 return Response({"mensagem": f"Status inválido. Use um dos seguintes: {', '.join(status_opcoes)}"},
