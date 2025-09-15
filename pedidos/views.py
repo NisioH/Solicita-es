@@ -203,23 +203,21 @@ def buscar_solicitacao(request):
 @api_view(['GET'])
 def buscar_solicitacao(request):
     try:
-        numero = request.GET.get("numero")
-        palavra = request.GET.get("palavra")
+        query = request.GET.get("q")
         centro_custo_busca = request.GET.get("centro_custo")
         status_busca = request.GET.get("status")
 
-        if not any([numero, palavra, centro_custo_busca, status_busca]):
-            return Response({"mensagem": "Informe ao menos um critério para a busca."}, status=400)
-
         query_params = {}
 
-        if numero:
-            query_params["numero"] = numero
-            print(f"API - Buscando por número (exato): {numero}")
-
-        if palavra:
-            query_params["descricao"] = {"$regex": palavra, "$options": "i"}
-            print(f"API - Buscando por descrição (contém): {palavra}")
+        # Se "q" estiver presente, pode ser número ou palavra-chave
+        if query:
+            # Se for só dígitos, assume que é número
+            if query.isdigit():
+                query_params["numero"] = query
+                print(f"API - Buscando por número (exato): {query}")
+            else:
+                query_params["descricao"] = {"$regex": query, "$options": "i"}
+                print(f"API - Buscando por descrição (contém): {query}")
 
         if centro_custo_busca:
             query_params["centro_custo"] = {"$regex": centro_custo_busca, "$options": "i"}
@@ -233,7 +231,8 @@ def buscar_solicitacao(request):
             query_params["status"] = status_busca
             print(f"API - Buscando por status (exato): {status_busca}")
 
-          
+        if not query_params:
+            return Response({"mensagem": "Informe ao menos um critério para a busca."}, status=400)
 
         solicitacoes_cursor = db.solicitacoes.find(query_params)
         resultados = []
