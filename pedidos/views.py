@@ -199,7 +199,6 @@ def buscar_solicitacao(request):
         print(f"API - Erro ao buscar no MongoDB: {e}")
         return Response({"mensagem": f"Erro interno ao buscar: {str(e)}"}, status=500)
  """
-
 @api_view(['GET'])
 def buscar_solicitacao(request):
     try:
