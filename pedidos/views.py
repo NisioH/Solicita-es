@@ -208,9 +208,8 @@ def buscar_solicitacao(request):
         centro_custo_busca = request.GET.get("centro_custo")
         status_busca = request.GET.get("status")
 
-        if not numero and not palavra and not centro_custo_busca and not status_busca:
-            return Response({"mensagem": "Informe um número, palavra-chave, centro de custo ou status para a busca."},
-                            status=400)
+        if not any([numero, palavra, centro_custo_busca, status_busca]):
+            return Response({"mensagem": "Informe ao menos um critério para a busca."}, status=400)
 
         query_params = {}
 
@@ -233,6 +232,8 @@ def buscar_solicitacao(request):
                                 status=400)
             query_params["status"] = status_busca
             print(f"API - Buscando por status (exato): {status_busca}")
+
+          
 
         solicitacoes_cursor = db.solicitacoes.find(query_params)
         resultados = []
