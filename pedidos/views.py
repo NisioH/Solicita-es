@@ -151,7 +151,6 @@ def criar_solicitacao(request):
         print(f"API - Erro ao criar solicitação: {e}")
         return Response({"mensagem": f"Erro interno ao criar solicitação: {str(e)}"}, status=500)
 
-""" 
 @api_view(['GET'])
 def buscar_solicitacao(request):
     try:
@@ -194,61 +193,6 @@ def buscar_solicitacao(request):
         return Response({"mensagem": "Nenhuma solicitação encontrada "
                                      "para os critérios informados.", "resultados": []},
                         status=200)
-
-    except Exception as e:
-        print(f"API - Erro ao buscar no MongoDB: {e}")
-        return Response({"mensagem": f"Erro interno ao buscar: {str(e)}"}, status=500)
- """
-@api_view(['GET'])
-def buscar_solicitacao(request):
-    try:
-        query = request.GET.get("q")
-        centro_custo_busca = request.GET.get("centro_custo")
-        status_busca = request.GET.get("status")
-
-        query_params = {}
-
-        # Se "q" estiver presente, pode ser número ou palavra-chave
-        if query:
-            # Se for só dígitos, assume que é número
-            if query.isdigit():
-                query_params["numero"] = query
-                print(f"API - Buscando por número (exato): {query}")
-            else:
-                query_params["descricao"] = {"$regex": query, "$options": "i"}
-                print(f"API - Buscando por descrição (contém): {query}")
-
-        if centro_custo_busca:
-            query_params["centro_custo"] = {"$regex": centro_custo_busca, "$options": "i"}
-            print(f"API - Buscando por centro de custo (contém): {centro_custo_busca}")
-
-        if status_busca and status_busca.strip():
-            status_opcoes = ["Recebido", "Aguardando", "Cancelada", "Reprovada"]
-            if status_busca not in status_opcoes:
-                return Response({"mensagem": f"Status inválido. Use um dos seguintes: {', '.join(status_opcoes)}"},
-                                status=400)
-            query_params["status"] = status_busca
-            print(f"API - Buscando por status (exato): {status_busca}")
-
-        if not query_params:
-            return Response({"mensagem": "Informe ao menos um critério para a busca."}, status=400)
-
-        solicitacoes_cursor = db.solicitacoes.find(query_params)
-        resultados = []
-        for solic in solicitacoes_cursor:
-            solic["_id"] = str(solic["_id"])
-            for key, value in solic.items():
-                if isinstance(value, datetime):
-                    solic[key] = value.strftime('%Y-%m-%d %H:%M:%S')
-            resultados.append(solic)
-
-        if resultados:
-            print(f"API - Encontrados {len(resultados)} resultados.")
-            return Response(resultados, status=200)
-
-        print("API - Nenhuma solicitação encontrada para os critérios.")
-        return Response({"mensagem": "Nenhuma solicitação encontrada para os critérios informados.",
-                         "resultados": []}, status=200)
 
     except Exception as e:
         print(f"API - Erro ao buscar no MongoDB: {e}")
