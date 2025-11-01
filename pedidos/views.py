@@ -11,6 +11,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from django.http import HttpResponse
 from bson.objectid import ObjectId # Importar ObjectId para lidar com IDs do MongoDB
+from openpyxl import Workbook
 
 
 BASE_API_URL = "http://127.0.0.1:8000/api/solicitacoes/"
@@ -274,9 +275,6 @@ def deletar_solicitacao(request, numero):
         return Response({"mensagem": f"Erro interno ao deletar: {str(e)}"}, status=500)
 
 
-from django.http import HttpResponse
-from openpyxl import Workbook
-from datetime import datetime
 
 def gerar_excel_relatorio_mensal(request):
     try:
