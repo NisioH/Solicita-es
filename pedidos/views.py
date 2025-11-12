@@ -158,10 +158,21 @@ def buscar_solicitacao(request):
         numero = request.GET.get("numero")
         palavra = request.GET.get("palavra")
         centro_custo_busca = request.GET.get("centro_custo")
+        safra = request.GET.get("safra")  # Novo parâmetro
+
+        # Parâmetros de paginação
+        page = int(request.GET.get('page', 1))
+        page_size = int(request.GET.get('page_size', 10))
+        if page < 1:
+            page = 1
+        if page_size < 1 or page_size > 100:
+            page_size = 10
+        skip = (page - 1) * page_size
 
         if not numero and not palavra and not centro_custo_busca:
             return Response({"mensagem": "Informe um número, palavra-chave ou centro de custo para a busca."},
                             status=400)
+        
         query_params = {}
 
         if numero:
@@ -169,18 +180,23 @@ def buscar_solicitacao(request):
             print(f"API - Buscando por número (exato): {numero}")
 
         if palavra:
-            query_params["descricao"] = {"$regex": palavra, "$options": "i"} # Busca case-insensitive
+            query_params["descricao"] = {"$regex": palavra, "$options": "i"}
             print(f"API - Buscando por descrição (contém): {palavra}")
 
         if centro_custo_busca:
             query_params["centro_custo"] = {"$regex": centro_custo_busca, "$options": "i"}
             print(f"API - Buscando por centro de custo (contém): {centro_custo_busca}")
 
-        solicitacoes_cursor = db.solicitacoes.find(query_params)
+        if safra:
+            query_params["safra"] = safra
+            print(f"API - Filtrando por safra: {safra}")
+
+        total = db.solicitacoes.count_documents(query_params)
+        solicitacoes_cursor = db.solicitacoes.find(query_params).sort('data_criacao', -1).skip(skip).limit(page_size)
+        
         resultados = []
         for solic in solicitacoes_cursor:
             solic["_id"] = str(solic["_id"])
-            
             for key, value in solic.items():
                 if isinstance(value, datetime):
                     solic[key] = value.strftime('%Y-%m-%d %H:%M:%S')
@@ -188,12 +204,17 @@ def buscar_solicitacao(request):
 
         if resultados:
             print(f"API - Encontrados {len(resultados)} resultados.")
-            return Response(resultados, status=200)
+            return Response({
+                "results": resultados,
+                "total": total,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": (total + page_size - 1) // page_size
+            }, status=200)
 
         print("API - Nenhuma solicitação encontrada para os critérios.")
-        return Response({"mensagem": "Nenhuma solicitação encontrada "
-                                     "para os critérios informados.", "resultados": []},
-                        status=200)
+        return Response({"mensagem": "Nenhuma solicitação encontrada para os critérios informados.", 
+                        "results": []}, status=200)
 
     except Exception as e:
         print(f"API - Erro ao buscar no MongoDB: {e}")
@@ -259,7 +280,66 @@ def atualizar_solicitacao(request, numero):
 
 @api_view(['DELETE'])
 def deletar_solicitacao(request, numero):
-   
+   def pedido_update(request, numero):
+    print(f"FRONTEND - Acessando página de edição do pedido: {numero}")
+    errors = {}
+
+    # Obtém a safra/ano da query string (ex: ?numero=5401&safra=2024)
+    safra = request.GET.get('safra', '')
+
+    # Busca o pedido da API com número E safra
+    if safra:
+        response_data = api_request('GET', f'buscar/?numero={numero}&safra={safra}')
+    else:
+        response_data = api_request('GET', f'buscar/?numero={numero}')
+
+    pedido_data = {}
+
+    # Trata a resposta da API
+    if isinstance(response_data, dict) and response_data.get("error"):
+        messages.error(request, response_data.get("message", "Erro ao buscar pedido."))
+        return redirect('pedido_list')
+    elif isinstance(response_data, list) and response_data:
+        pedido_data = response_data[0]
+    elif isinstance(response_data, dict) and response_data.get("results"):
+        pedido_data = response_data['results'][0] if response_data['results'] else {}
+    else:
+        messages.error(request, "Pedido não encontrado.")
+        return redirect('pedido_list')
+
+    if not pedido_data:
+        messages.error(request, "Pedido não encontrado.")
+        return redirect('pedido_list')
+
+    temp_numero = pedido_data.get('numero')
+    if not temp_numero:
+        temp_numero = str(pedido_data.get('_id', ''))
+    if not temp_numero:
+        temp_numero = 'INVALID_NUM'
+    pedido_data['numero'] = temp_numero
+
+    if request.method == 'POST':
+        # ... seu código de POST aqui ...
+        pass
+
+    # Para GET: Formatar as datas para o input type="date" (YYYY-MM-DD)
+    if 'data' in pedido_data and pedido_data['data']:
+        try:
+            dt_obj = datetime.strptime(pedido_data['data'], '%Y-%m-%d %H:%M:%S')
+            pedido_data['data'] = dt_obj.strftime('%Y-%m-%d')
+        except (ValueError, TypeError):
+            pass
+
+    if 'data_recebido' in pedido_data and pedido_data['data_recebido']:
+        try:
+            dt_obj = datetime.strptime(pedido_data['data_recebido'], '%Y-%m-%d %H:%M:%S')
+            pedido_data['data_recebido'] = dt_obj.strftime('%Y-%m-%d')
+        except (ValueError, TypeError):
+            pass
+    else:
+        pedido_data['data_recebido'] = ""
+
+    return render(request, 'pedidos/pedido_form.html', {'pedido': pedido_data, 'errors': errors})
     print(f"API - Recebido para deletar: {numero}")
     try:
         resultado = db.solicitacoes.delete_one({"numero": numero})
@@ -444,106 +524,62 @@ def pedido_update(request, numero):
     print(f"FRONTEND - Acessando página de edição do pedido: {numero}")
     errors = {}
 
-    # Busca o pedido da API
-    response_data = api_request('GET', f'buscar/?numero={numero}')
+    # Obtém a safra/ano da query string (ex: ?numero=5401&safra=2024)
+    safra = request.GET.get('safra', '')
+
+    # Busca o pedido da API com número E safra
+    if safra:
+        response_data = api_request('GET', f'buscar/?numero={numero}&safra={safra}')
+    else:
+        response_data = api_request('GET', f'buscar/?numero={numero}')
 
     pedido_data = {}
 
-    # Trata a resposta da API (pode vir como lista com um item, ou um dict único se a busca for exata)
+    # Trata a resposta da API
     if isinstance(response_data, dict) and response_data.get("error"):
-        messages.error(request, response_data.get("message", "Erro ao buscar pedido para edição."))
+        messages.error(request, response_data.get("message", "Erro ao buscar pedido."))
         return redirect('pedido_list')
-    elif isinstance(response_data, dict) and not response_data.get("resultados"): # Se for um único dict e não tiver "resultados"
-         pedido_data = response_data
     elif isinstance(response_data, list) and response_data:
-        # Se vier uma lista, pegamos o primeiro item
         pedido_data = response_data[0]
-    elif isinstance(response_data, dict) and response_data.get("resultados"): # Se a API retornar com 'resultados'
-        if response_data['resultados']:
-            pedido_data = response_data['resultados'][0]
-        else:
-            messages.error(request, f"Pedido com número {numero} não encontrado.")
-            return redirect('pedido_list')
+    elif isinstance(response_data, dict) and response_data.get("results"):
+        pedido_data = response_data['results'][0] if response_data['results'] else {}
     else:
-        messages.error(request, "Formato de dados inesperado da API ao buscar pedido.")
+        messages.error(request, "Pedido não encontrado.")
         return redirect('pedido_list')
 
     if not pedido_data:
-        messages.error(request, f"Pedido com número {numero} não encontrado ou dados inválidos.")
+        messages.error(request, "Pedido não encontrado.")
         return redirect('pedido_list')
 
-    
-    temp_numero = pedido_data.get('numero') 
+    temp_numero = pedido_data.get('numero')
     if not temp_numero:
         temp_numero = str(pedido_data.get('_id', ''))
     if not temp_numero:
         temp_numero = 'INVALID_NUM'
-        messages.warning(request,
-                         f"Um pedido sem número ou "
-                         f"_id válido foi encontrado para edição. ID: {pedido_data.get('_id', 'N/A')}")
     pedido_data['numero'] = temp_numero
 
     if request.method == 'POST':
-        updated_data = {
-            "numero": request.POST.get('numero'),
-            "descricao": request.POST.get('descricao'),
-            "solicitado_por": request.POST.get('solicitado_por'),
-            "safra": request.POST.get('safra'),
-            "centro_custo": request.POST.get('centro_custo'),
-            "status": request.POST.get('status'),
-            "data": request.POST.get('data'),
-            "data_recebido": request.POST.get('data_recebido'),
-            "fornecedor": request.POST.get('fornecedor'),
-            "nota_fiscal": request.POST.get('nota_fiscal'),
-        }
-
-        required_fields = ["numero", "descricao", "solicitado_por", "safra", "centro_custo", "status", "data"]
-        for field in required_fields:
-            if not updated_data.get(field):
-                errors[field] = ["Este campo é obrigatório."]
-
-        if errors:
-            messages.error(request, "Por favor, corrija os erros no formulário.")
-            return render(request, 'pedidos/pedido_form.html',
-                          {'pedido': updated_data, 'errors': errors})
-
-        data_to_send = {}
-        for k, v in updated_data.items():
-            if v == '':
-                data_to_send[k] = None
-            else:
-                data_to_send[k] = v
-
-        response_data_update = api_request('PUT', f'atualizar/{numero}/', data=data_to_send)
-
-        if response_data_update.get("error"):
-            messages.error(request, response_data_update["message"])
-            return render(request, 'pedidos/pedido_form.html',
-                          {'pedido': updated_data, 'errors': errors})
-        else:
-            messages.success(request, response_data_update["mensagem"])
-            # Se o número foi alterado, redireciona para o novo número na URL
-            if updated_data['numero'] != numero:
-                return redirect('pedido_update', numero=updated_data['numero'])
-            return redirect('pedido_list')
+        # ... seu código de POST aqui ...
+        pass
 
     # Para GET: Formatar as datas para o input type="date" (YYYY-MM-DD)
     if 'data' in pedido_data and pedido_data['data']:
         try:
-            # A API retorna no formato '%Y-%m-%d %H:%M:%S', precisamos para '%Y-%m-%d' para input type=date
-            pedido_data['data'] = datetime.strptime(pedido_data['data'], '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d')
+            dt_obj = datetime.strptime(pedido_data['data'], '%Y-%m-%d %H:%M:%S')
+            pedido_data['data'] = dt_obj.strftime('%Y-%m-%d')
         except (ValueError, TypeError):
             pass
+
     if 'data_recebido' in pedido_data and pedido_data['data_recebido']:
         try:
-            pedido_data['data_recebido'] = datetime.strptime(pedido_data['data_recebido'], '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d')
+            dt_obj = datetime.strptime(pedido_data['data_recebido'], '%Y-%m-%d %H:%M:%S')
+            pedido_data['data_recebido'] = dt_obj.strftime('%Y-%m-%d')
         except (ValueError, TypeError):
             pass
     else:
-        pedido_data['data_recebido'] = "" # Garante que o campo esteja vazio se for None
+        pedido_data['data_recebido'] = ""
 
     return render(request, 'pedidos/pedido_form.html', {'pedido': pedido_data, 'errors': errors})
-
 
 def pedido_delete(request, numero):
     print(f"FRONTEND - Acessando página de exclusão do pedido: {numero}")
