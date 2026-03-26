@@ -4,13 +4,13 @@ import requests
 from django.shortcuts import render, redirect, reverse
 from django.contrib import messages
 from datetime import datetime
-from .database import db # Certifique-se de que este import está correto para o seu arquivo database.py
+from .database import db 
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from django.http import HttpResponse
-from bson.objectid import ObjectId # Importar ObjectId para lidar com IDs do MongoDB
+from bson.objectid import ObjectId 
 from openpyxl import Workbook
 from django.utils.http import urlencode
 
@@ -142,7 +142,7 @@ def criar_solicitacao(request):
         else:
             data['data_recebido'] = None # Garante que seja None se estiver vazio ou não for fornecido
 
-        data['data_criacao'] = datetime.now() # Adiciona a data/hora de criação
+        data['data_criacao'] = datetime.now() 
 
         result = db.solicitacoes.insert_one(data)
         print(f"API - Solicitação criada com ID: {result.inserted_id} e número: {data['numero']}")
@@ -240,7 +240,6 @@ def gerar_excel_relatorio_mensal(request):
 def home_page(request):
     return render(request, 'pedidos/home.html')
 
-# No seu views.py, atualize a função pedido_list:
 
 def pedido_list(request):
     page = int(request.GET.get('page', 1))
@@ -268,7 +267,7 @@ def pedido_list(request):
     return render(request, 'pedidos/pedido_list.html', {
         'pedidos': pedidos,
         'page': page,
-        'status_selecionado': status_filter, # Passamos de volta para o HTML
+        'status_selecionado': status_filter, 
         'total_pages': api_res.get('total_pages', 1),
         'has_previous': page > 1,
         'has_next': page < api_res.get('total_pages', 1),
@@ -295,8 +294,7 @@ from django.contrib import messages
 from django.utils.http import urlencode
 
 def pedido_update(request, numero):
-    # 1. Captura os parâmetros que vieram da URL (GET)
-    # Importante: Use os nomes 'page' e 'status' para bater com o filtro da lista
+    
     page = request.GET.get('page', '1')
     status_f = request.GET.get('status', '')
     safra = request.GET.get('safra', '')
@@ -316,7 +314,6 @@ def pedido_update(request, numero):
             'nota_fiscal': request.POST.get('nota_fiscal'),
         }
 
-        # Chama sua API de atualização
         api_res = api_request('PUT', f'atualizar/{numero}/', data=form_data, params={'safra': safra})
 
         if api_res.get("error"):
@@ -325,18 +322,16 @@ def pedido_update(request, numero):
 
         messages.success(request, f"Solicitação {numero} atualizada com sucesso!")
 
-        # --- REDIRECIONAMENTO PRECISO ---
-        # Pegamos os valores dos campos hidden que estão no seu pedido_form.html
+        
         p_retorno = request.POST.get('page', '1')
         s_retorno = request.POST.get('status_filtro', '')
 
-        # O 'reverse' vai encontrar o caminho '/pedidos/' automaticamente
+       
         base_url = reverse('pedido_list') 
         query_string = urlencode({'page': p_retorno, 'status': s_retorno})
         
         return redirect(f"{base_url}?{query_string}")
 
-    # --- CARREGAMENTO INICIAL (GET) ---
     res = api_request('GET', 'buscar/', params={'numero': numero, 'safra': safra})
     
     if not res or not res.get('results'):

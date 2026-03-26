@@ -1,7 +1,7 @@
 # C:\Users\fazin\OneDrive\Documents\Nisio\Solicita-es\pedidos\urls.py
 
 from django.urls import path
-from . import views # <-- Importa as views do próprio app 'pedidos'
+from . import views 
 
 urlpatterns = [
     # Esta é a rota que serve a página HTML da lista de pedidos
