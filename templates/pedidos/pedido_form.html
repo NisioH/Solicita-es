@@ -15,7 +15,7 @@
                 </h4>
             </div>
             <div class="card-body">
-                <form method="post" action="" novalidate>
+                <form method="post" action="{% if pedido.numero %}{% url 'pedido_update' pedido.numero %}{% else %}{% url 'pedido_create' %}{% endif %}" novalidate>
                     {% csrf_token %}
 
                     <input type="hidden" name="page" value="{{ current_page }}">
