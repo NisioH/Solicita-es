@@ -77,13 +77,28 @@
                         <span class="badge bg-info text-dark text-uppercase">{{ pedido.status }}</span>
                     {% endif %}
                 </td>
-                <td class="text-center">
-                    <div class="btn-group btn-group-sm">
-                        <a href="{% url 'pedido_update' pedido.numero %}?safra={{ pedido.safra }}&page={{ page }}&status={{ status_selecionado }}" 
-                            class="btn btn-outline-primary" title="Editar">
+                <td>
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-outline-info" title="Ver Detalhes"
+                                data-bs-toggle="modal" 
+                                data-bs-target="#modalDetalhes"
+                                data-numero="{{ pedido.numero|default:'-' }}"
+                                data-safra="{{ pedido.safra|default:'-' }}"
+                                data-solicitante="{{ pedido.solicitado_por|default:'-' }}"
+                                data-centro="{{ pedido.centro_custo|default:'-' }}"
+                                data-status="{{ pedido.status|default:'-' }}"
+                                data-data="{{ pedido.data_formatada|default:'-' }}"
+                                data-data-recebido="{{ pedido.data_recebido|default:'-' }}"
+                                data-fornecedor="{{ pedido.fornecedor|default:'-' }}"
+                                data-nota="{{ pedido.nota_fiscal|default:'-' }}"
+                                data-descricao="{{ pedido.descricao|default:'-' }}">
+                            <i class="bi bi-eye"></i>
+                        </button>
+
+                        <a href="{% url 'pedido_update' pedido.numero %}?safra={{ pedido.safra }}&page={{ page }}&status={{ status_selecionado }}" class="btn btn-outline-primary" title="Editar">
                             <i class="bi bi-pencil"></i>
                         </a>
-                        <a href="{% url 'pedido_delete' pedido.numero %}" class="btn btn-outline-danger" title="Excluir">
+                        <a href="{% url 'pedido_delete' pedido.numero %}?safra={{ pedido.safra }}" class="btn btn-outline-danger" title="Excluir">
                             <i class="bi bi-trash"></i>
                         </a>
                     </div>
@@ -162,6 +177,68 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="modalDetalhes" tabindex="-1" aria-labelledby="modalDetalhesLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="modalDetalhesLabel">
+                    <i class="bi bi-info-circle me-2"></i>Detalhes da Solicitação #<span id="modal-numero"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <p class="mb-1 fw-bold text-muted">Safra</p>
+                        <p id="modal-safra" class="fs-6"></p>
+                    </div>
+                    <div class="col-md-3">
+                        <p class="mb-1 fw-bold text-muted">Data Solicitação</p>
+                        <p id="modal-data" class="fs-6"></p>
+                    </div>
+                    <div class="col-md-3">
+                        <p class="mb-1 fw-bold text-muted">Data Recebimento</p>
+                        <p id="modal-data-recebido" class="fs-6"></p>
+                    </div>
+                    <div class="col-md-3">
+                        <p class="mb-1 fw-bold text-muted">Status</p>
+                        <p id="modal-status" class="fs-6"></p>
+                    </div>
+
+                    <div class="col-md-4">
+                        <p class="mb-1 fw-bold text-muted">Solicitado por</p>
+                        <p id="modal-solicitante" class="fs-6"></p>
+                    </div>
+                    <div class="col-md-4">
+                        <p class="mb-1 fw-bold text-muted">Centro de Custo</p>
+                        <p id="modal-centro" class="fs-6"></p>
+                    </div>
+                    <div class="col-md-4">
+                        <p class="mb-1 fw-bold text-muted">Fornecedor</p>
+                        <p id="modal-fornecedor" class="fs-6"></p>
+                    </div>
+
+                    <div class="col-md-12">
+                        <p class="mb-1 fw-bold text-muted">Nota Fiscal</p>
+                        <p id="modal-nota" class="fs-6"></p>
+                    </div>
+
+                    <div class="col-12">
+                        <hr class="mt-1">
+                        <p class="mb-1 fw-bold text-muted">Descrição / Finalidade</p>
+                        <div class="p-3 bg-light rounded border">
+                            <p id="modal-descricao" class="mb-0" style="white-space: pre-wrap;"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -171,6 +248,65 @@
         e.preventDefault();
         var myModal = new bootstrap.Modal(document.getElementById('modalExcel'));
         myModal.show();
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var modalDetalhes = document.getElementById('modalDetalhes');
+        
+        if (modalDetalhes) { 
+            modalDetalhes.addEventListener('show.bs.modal', function (event) {
+                var button = event.relatedTarget;
+                
+                var numero = button.getAttribute('data-numero');
+                var safra = button.getAttribute('data-safra');
+                var solicitante = button.getAttribute('data-solicitante');
+                var centro = button.getAttribute('data-centro');
+                var status = button.getAttribute('data-status') || '-';
+                var data = button.getAttribute('data-data');
+                var descricao = button.getAttribute('data-descricao');
+                
+                var fornecedor = button.getAttribute('data-fornecedor');
+                var nota = button.getAttribute('data-nota');
+                var dataRecebido = button.getAttribute('data-data-recebido');
+                
+                if (dataRecebido && dataRecebido !== '-' && dataRecebido !== 'None') {
+                    if (dataRecebido.includes('-')) {
+                        var partes = dataRecebido.substring(0, 10).split('-');
+                        dataRecebido = partes[2] + '/' + partes[1] + '/' + partes[0];
+                    }
+                } else {
+                    dataRecebido = '-';
+                }
+                
+                fornecedor = (fornecedor === 'None' || !fornecedor) ? '-' : fornecedor;
+                nota = (nota === 'None' || !nota) ? '-' : nota;
+
+                document.getElementById('modal-numero').textContent = numero;
+                document.getElementById('modal-safra').textContent = safra;
+                document.getElementById('modal-solicitante').textContent = solicitante;
+                document.getElementById('modal-centro').textContent = centro;
+                document.getElementById('modal-data').textContent = data;
+                document.getElementById('modal-descricao').textContent = descricao;
+                
+                document.getElementById('modal-data-recebido').textContent = dataRecebido;
+                document.getElementById('modal-fornecedor').textContent = fornecedor;
+                document.getElementById('modal-nota').textContent = nota;
+                
+                var statusEl = document.getElementById('modal-status');
+                statusEl.textContent = status.toUpperCase();
+                
+                var s = status.toLowerCase();
+                if (s === 'concluído' || s === 'recebido') {
+                    statusEl.className = 'badge rounded-pill bg-success fs-6';
+                } else if (s === 'reprovada') {
+                    statusEl.className = 'badge rounded-pill bg-danger fs-6';
+                } else if (s === 'cancelado' || s === 'cancelada') {
+                    statusEl.className = 'badge rounded-pill bg-secondary fs-6';
+                } else {
+                    statusEl.className = 'badge rounded-pill bg-info text-dark fs-6'; 
+                }
+            });
+        }
     });
 </script>
 {% endblock %}

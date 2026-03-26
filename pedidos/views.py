@@ -53,11 +53,22 @@ def listar_solicitacoes(request):
         page = max(int(request.GET.get('page', 1)), 1)
         page_size = 10
         status_filtro = request.GET.get('status', None)
+        busca_texto = request.GET.get('q', None) # Captura o termo de busca
         skip = (page - 1) * page_size
 
         query_mongo = {}
+        
+        # 1. Aplica o filtro de status (se houver)
         if status_filtro:
             query_mongo["status"] = status_filtro
+            
+        # 2. Aplica o filtro de busca (se o usuário digitou algo)
+        if busca_texto:
+            if busca_texto.isdigit():
+                query_mongo["numero"] = busca_texto # Busca exata pelo número
+            else:
+                # Busca por qualquer pedaço de palavra na descrição (case insensitive)
+                query_mongo["descricao"] = {"$regex": busca_texto, "$options": "i"}
 
         total = db.solicitacoes.count_documents(query_mongo)
         cursor = db.solicitacoes.find(query_mongo).sort('data_criacao', -1).skip(skip).limit(page_size)
@@ -165,18 +176,22 @@ def home_page(request):
     return render(request, 'pedidos/home.html')
 
 def pedido_list(request):
+    # pega o parâmetros
     page = int(request.GET.get('page', 1))
     status_filter = request.GET.get('status', '')
+    busca = request.GET.get('q', '')
 
+    # Prepara os parâmetros 
     params = {
         'page': page,
-        'page_size': 10,  # Quantidade por página
-        'status': status_filter
+        'page_size': 10, 
+        'status': status_filter,
+        'q': busca     
     }
     
-    # 3. Chama a API
     api_res = api_request('GET', '', params=params)
 
+    # Trata pra API não quebrar
     if api_res.get("error"):
         messages.error(request, api_res["message"])
         return render(request, 'pedidos/pedido_list.html', {'pedidos': []})
@@ -187,11 +202,12 @@ def pedido_list(request):
         p['data_formatada'] = formatar_data_exibicao(p.get('data'))
 
     total_pages = api_res.get('total_pages', 1)
-    
+
     return render(request, 'pedidos/pedido_list.html', {
         'pedidos': pedidos,
         'page': page,
         'status_selecionado': status_filter, 
+        'busca': busca,
         'total_pages': total_pages,
         'has_previous': page > 1,
         'has_next': page < total_pages,
@@ -262,7 +278,6 @@ def pedido_delete(request, numero):
     safra = request.GET.get('safra', '')
 
     if request.method == 'POST':
-        # Se o usuário confirmou no botão "Sim, Excluir"
         api_res = api_request('DELETE', f'deletar/{numero}/', params={'safra': safra})
         
         if not api_res.get("error"):
@@ -274,7 +289,6 @@ def pedido_delete(request, numero):
 
     res = api_request('GET', 'buscar/', params={'numero': numero, 'safra': safra})
     
-    # Se a API retornou resultados, pegamos o primeiro
     pedido = {}
     if res.get('results') and len(res['results']) > 0:
         pedido = res['results'][0]
