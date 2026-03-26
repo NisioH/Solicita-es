@@ -3,17 +3,37 @@
 {% block title %}Confirmar Exclusão{% endblock %}
 
 {% block content %}
-<div class="text-center">
-    <h1 class="mb-4 text-danger">Confirmar Exclusão</h1>
-    <div class="alert alert-warning" role="alert">
-        <p class="lead">Você tem certeza que deseja excluir a Solicitaçã:</p>
-        <p class="mb-4"><strong>Número:</strong> {{ pedido.numero }}<br>
-           <strong>Descrição:</strong> {{ pedido.descricao }}</p>
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6">
+        <div class="card border-danger shadow">
+            <div class="card-header bg-danger text-white">
+                <h4 class="mb-0"><i class="bi bi-exclamação-triangle me-2"></i> Confirmar Exclusão</h4>
+            </div>
+            <div class="card-body text-center">
+                <p class="lead">Tem a certeza que deseja excluir permanentemente esta solicitação?</p>
+                
+                <div class="bg-light p-3 rounded mb-4 text-start border">
+                    <p class="mb-1"><strong>Número:</strong> {{ pedido.numero }}</p>
+                    <p class="mb-1"><strong>Descrição:</strong> {{ pedido.descricao }}</p>
+                    <p class="mb-0"><strong>Solicitante:</strong> {{ pedido.solicitado_por }}</p>
+                </div>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex justify-content-center gap-3">
+                        <a href="{% url 'pedido_list' %}" class="btn btn-secondary px-4">
+                            <i class="bi bi-x-circle"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-danger px-4">
+                            <i class="bi bi-trash"></i> Sim, Excluir
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer text-muted small text-center">
+                Esta ação não pode ser desfeita.
+            </div>
+        </div>
     </div>
-    <form method="post" class="d-inline-block">
-        {% csrf_token %}
-        <button type="submit" class="btn btn-danger me-2">Confirmar Exclusão</button>
-        <a href="{% url 'pedido_list' %}" class="btn btn-secondary">Cancelar</a>
-    </form>
 </div>
-{% endblock content %}
+{% endblock %}

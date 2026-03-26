@@ -1,57 +1,59 @@
-
-
-
 {% extends 'base.html' %}
 
 {% block title %}Lista de Solicitações{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">Lista de Solicitações</h1>
-    <a href="{% url 'pedido_create' %}" class="btn btn-success" name="novo_pedido">
-        <i class="bi bi-plus-circle me-1"></i> Nova Solicitação
-    </a>
-</div>
-
-<div class="mb-4">
-    <form action="{% url 'pedido_search' %}" method="get" class="d-flex">
-        <input type="text" name="q" class="form-control me-2" placeholder="Buscar por número ou palavra-chave..." value="{{ query|default:'' }}">
-        <button type="submit" class="btn btn-primary">
-            <i class="bi bi-search me-1"></i> Buscar
-        </button>
-    </form>
-</div>
-
-
-<form action="{% url 'api_gerar_excel_relatorio_mensal' %}" method="get" target="_blank" class="mb-4">
-    <div class="input-group input-group-sm w-auto">
-        <span class="input-group-text"><i class="bi bi-calendar-date"></i></span>
-        <input type="text" id="mesAno" class="form-control" placeholder="Selecione Mês/Ano" required>
-        <button type="submit" class="btn btn-info">
-            <i class="bi bi-file-earmark-excel"></i> Gerar Relatório
-        </button>
+    <h1 class="mb-0 text-primary"><i class="bi bi-list-ul"></i> Solicitações</h1>
+    <div>
+        <a href="#" class="btn btn-outline-success me-2" id="btnExportar">
+            <i class="bi bi-file-earmark-excel"></i> Exportar Mensal
+        </a>
+        <a href="{% url 'pedido_create' %}" class="btn btn-success">
+            <i class="bi bi-plus-circle"></i> Nova Solicitação
+        </a>
     </div>
-</form>
+</div>
 
-{% if messages %}
-    <ul class="messages list-unstyled">
-        {% for message in messages %}
-            <li class="alert {% if message.tags %}alert-{{ message.tags }}{% else %}alert-info{% endif %}">{{ message }}</li>
-        {% endfor %}
-    </ul>
-{% endif %}
+<div class="card mb-4 border-0 shadow-sm">
+    <div class="card-body bg-light rounded">
+        <form action="{% url 'pedido_list' %}" method="get" class="row g-2">
+            <div class="col-md-4">
+                <input type="text" name="q" class="form-control" placeholder="Buscar número ou descrição..." value="{{ query|default:'' }}">
+            </div>
+            
+            <div class="col-md-3">
+                <select name="status" class="form-select">
+                    <option value="">Todos os Status</option>
+                    <option value="Reprovada" {% if status_selecionado == 'Reprovada' %}selected{% endif %}>Reprovada</option>
+                    <option value="Em Aberto" {% if status_selecionado == 'Em Aberto' %}selected{% endif %}>Em Aberto</option>
+                    <option value="Concluído" {% if status_selecionado == 'Concluído' %}selected{% endif %}>Concluído</option>
+                    <option value="Cancelado" {% if status_selecionado == 'Cancelado' %}selected{% endif %}>Cancelado</option>
+                </select>
+            </div>
 
-{% if pedidos %}
-<div class="table-responsive">
-    <table class="table table-striped table-hover">
+            <div class="col-md-3">
+                <input type="text" name="centro_custo" class="form-control" placeholder="Centro de Custo..." value="{{ centro_custo_query|default:'' }}">
+            </div>
+
+            <div class="col-md-2 d-grid">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-filter"></i> Filtrar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="table-responsive shadow-sm rounded">
+    <table class="table table-hover align-middle bg-white mb-0">
         <thead class="table-dark">
             <tr>
                 <th>Número</th>
                 <th>Data</th>
                 <th>Descrição</th>
-                <th>Solicitado</th>
-                <th>Safra</th>
-                <th>Centro Custo</th>
+                <th>Solicitante</th>
+                <th>Centro de Custo</th>
                 <th>Status</th>
                 <th class="text-center">Ações</th>
             </tr>
@@ -59,42 +61,55 @@
         <tbody>
             {% for pedido in pedidos %}
             <tr>
-                <td>{{ pedido.numero }}</td>
-                <td>{{ pedido.data_criacao_formatada|default:"N/A" }}</td>
-                <td>{{ pedido.descricao }}</td>
+                <td class="fw-bold">{{ pedido.numero }}</td>
+                <td>{{ pedido.data_formatada }}</td>
+                <td class="text-truncate" style="max-width: 250px;">{{ pedido.descricao }}</td>
                 <td>{{ pedido.solicitado_por }}</td>
-                <td>{{ pedido.safra }}</td>
-                <td>{{ pedido.centro_custo }}</td>
-                <td>{{ pedido.status }}</td>
+                <td><span class="badge bg-secondary">{{ pedido.centro_custo }}</span></td>
+                <td>
+                    {% if pedido.status == 'Concluído' %}
+                        <span class="badge bg-success text-uppercase">{{ pedido.status }}</span>
+                    {% elif pedido.status == 'Reprovada' %}
+                        <span class="badge bg-danger text-uppercase">{{ pedido.status }}</span>
+                    {% elif pedido.status == 'Cancelado' %}
+                        <span class="badge bg-secondary text-uppercase">{{ pedido.status }}</span>
+                    {% else %}
+                        <span class="badge bg-info text-dark text-uppercase">{{ pedido.status }}</span>
+                    {% endif %}
+                </td>
                 <td class="text-center">
-                    <a href="{% url 'pedido_update' pedido.numero %}?safra={{ pedido.safra }}" class="btn btn-sm btn-warning me-1">
-                        <i class="bi bi-pencil"></i> Editar
-                    </a>
-                    <a href="{% url 'pedido_delete' pedido.numero %}" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza que deseja excluir este pedido?');">
-                        <i class="bi bi-trash"></i> Excluir
-                    </a>
+                    <div class="btn-group btn-group-sm">
+                        <a href="{% url 'pedido_update' pedido.numero %}?safra={{ pedido.safra }}&page={{ page }}&status={{ status_selecionado }}" 
+                            class="btn btn-outline-primary" title="Editar">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <a href="{% url 'pedido_delete' pedido.numero %}" class="btn btn-outline-danger" title="Excluir">
+                            <i class="bi bi-trash"></i>
+                        </a>
+                    </div>
                 </td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="9" class="text-center">Nenhum pedido encontrado.</td>
+                <td colspan="7" class="text-center py-5 text-muted">
+                    <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+                    Nenhuma solicitação encontrada para os filtros aplicados.
+                </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
 
-<div class="d-flex justify-content-center my-3">
-    <nav aria-label="Navegação de página">
+{% if total_pages > 1 %}
+<nav class="mt-4 shadow-sm p-3 bg-white rounded border">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
+        
         <ul class="pagination mb-0">
             {% if has_previous %}
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ previous_page }}&page_size={{ page_size }}">Anterior</a>
-                </li>
-            {% else %}
-                <li class="page-item disabled">
-                    <span class="page-link">Anterior</span>
-                </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ previous_page }}&status={{ status_selecionado }}&q={{ query|default:'' }}&centro_custo={{ centro_custo_query|default:'' }}">Anterior</a>
+            </li>
             {% endif %}
 
             <li class="page-item active">
@@ -102,21 +117,60 @@
             </li>
 
             {% if has_next %}
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ next_page }}&page_size={{ page_size }}">Próxima</a>
-                </li>
-            {% else %}
-                <li class="page-item disabled">
-                    <span class="page-link">Próxima</span>
-                </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ next_page }}&status={{ status_selecionado }}&q={{ query|default:'' }}&centro_custo={{ centro_custo_query|default:'' }}">Próxima</a>
+            </li>
             {% endif %}
         </ul>
-    </nav>
-</div>
 
-{% else %}
-<div class="alert alert-info text-center" role="alert">
-    Nenhum pedido encontrado.
-</div>
+        <form action="" method="get" class="d-flex align-items-center gap-2">
+            <span class="small text-muted">Ir para:</span>
+            <input type="number" name="page" class="form-control form-control-sm" style="width: 80px;" 
+                   min="1" max="{{ total_pages }}" value="{{ page }}">
+            
+            <input type="hidden" name="status" value="{{ status_selecionado }}">
+            <input type="hidden" name="q" value="{{ query|default:'' }}">
+            <input type="hidden" name="centro_custo" value="{{ centro_custo_query|default:'' }}">
+            
+            <button type="submit" class="btn btn-sm btn-outline-primary">Ir</button>
+        </form>
+
+    </div>
+</nav>
 {% endif %}
-{% endblock content %}
+
+<div class="modal fade" id="modalExcel" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{% url 'api_gerar_excel_relatorio_mensal' %}" method="get" target="_blank">
+                <div class="modal-header">
+                    <h5 class="modal-title">Exportar Relatório Mensal</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Selecione o mês e o ano para gerar o ficheiro Excel:</p>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-calendar3"></i></span>
+                        <input type="text" id="mesAno" class="form-control" placeholder="MM/AAAA" readonly required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    <button type="submit" class="btn btn-success">Gerar Excel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+    document.getElementById('btnExportar').addEventListener('click', function(e) {
+        e.preventDefault();
+        var myModal = new bootstrap.Modal(document.getElementById('modalExcel'));
+        myModal.show();
+    });
+</script>
+{% endblock %}

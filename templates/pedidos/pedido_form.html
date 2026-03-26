@@ -1,152 +1,99 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% if pedido %}Editar Solicitação{% else %}Nova Solicitação{% endif %}</title>
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body {
-            padding-top: 20px;
-        }
-        .container {
-            max-width: 800px; /* Largura máxima para o formulário */
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1 class="mb-4">{% if pedido %}Editar Solicitação{% else %}Nova Solicitação{% endif %}</h1>
+{% extends 'base.html' %}
 
-        <form method="post">
-            {% csrf_token %}
+{% block title %}
+    {% if pedido.numero %}Editar Solicitação {{ pedido.numero }}{% else %}Nova Solicitação{% endif %}
+{% endblock %}
 
-            {% if messages %}
-                <ul class="messages list-unstyled">
-                    {% for message in messages %}
-                        <li class="alert {% if message.tags %}alert-{{ message.tags }}{% else %}alert-info{% endif %}">{{ message }}</li>
-                    {% endfor %}
-                </ul>
-            {% endif %}
-
-            <div class="form-group">
-                <label for="id_numero">Número da Solicitação:</label>
-                <input type="text"
-                       class="form-control"
-                       id="id_numero"
-                       name="numero"
-                       value="{{ pedido.numero|default_if_none:'' }}"
-                       placeholder="Digite o número da solicitação"
-                       required> {% if errors.numero %}
-                    <div class="text-danger">
-                        {% for error in errors.numero %}{{ error }}{% endfor %}
-                    </div>
-                {% endif %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">
+                    <i class="bi bi-file-earmark-text me-2"></i>
+                    {% if pedido.numero %}Editar Solicitação{% else %}Nova Solicitação{% endif %}
+                </h4>
             </div>
+            <div class="card-body">
+                <form method="post" action="" novalidate>
+                    {% csrf_token %}
 
-            <div class="form-group">
-                <label for="id_descricao">Descrição:</label>
-                <textarea class="form-control" id="id_descricao" name="descricao" rows="3" required>{{ pedido.descricao|default_if_none:'' }}</textarea>
-                {% if errors.descricao %}
-                    <div class="text-danger">
-                        {% for error in errors.descricao %}{{ error }}{% endfor %}
+                    <input type="hidden" name="page" value="{{ current_page }}">
+                    <input type="hidden" name="status_filtro" value="{{ current_status }}">
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Número da Solicitação</label>
+                            <input type="text" name="numero" class="form-control" 
+                                   value="{{ pedido.numero|default:'' }}" 
+                                   {% if pedido.numero %}readonly{% endif %} required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Safra</label>
+                            <input type="text" name="safra" class="form-control" 
+                                   value="{{ pedido.safra|default:'' }}" placeholder="Ex: 2024/2025" required>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Descrição</label>
+                            <textarea name="descricao" class="form-control" rows="3" required>{{ pedido.descricao|default:'' }}</textarea>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Solicitado por</label>
+                            <input type="text" name="solicitado_por" class="form-control" 
+                                   value="{{ pedido.solicitado_por|default:'' }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Centro de Custo</label>
+                            <input type="text" name="centro_custo" class="form-control" 
+                                   value="{{ pedido.centro_custo|default:'' }}" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Data da Solicitação</label>
+                            <input type="date" name="data" class="form-control" 
+                                   value="{{ pedido.data|default:'' }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Data de Recebimento</label>
+                            <input type="date" name="data_recebido" class="form-control" 
+                                   value="{{ pedido.data_recebido|default:'' }}">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Status</label>
+                            <select name="status" class="form-select">
+                                <option value="Em Aberto" {% if pedido.status == 'Em Aberto' or pedido.status == 'em aberto' or pedido.status == 'Aguardando' %}selected{% endif %}>Em Aberto</option>
+                                <option value="Reprovada" {% if pedido.status == 'Reprovada' %}selected{% endif %}>Reprovada</option>
+                                <option value="Concluído" {% if pedido.status == 'Concluído' or pedido.status == 'Recebido' %}selected{% endif %}>Concluído</option>
+                                <option value="Cancelado" {% if pedido.status == 'Cancelado' or pedido.status == 'Cancelada' %}selected{% endif %}>Cancelado</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Fornecedor</label>
+                            <input type="text" name="fornecedor" class="form-control" 
+                                   value="{{ pedido.fornecedor|default:'' }}">
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Nota Fiscal</label>
+                            <input type="text" name="nota_fiscal" class="form-control" 
+                                   value="{{ pedido.nota_fiscal|default:'' }}">
+                        </div>
                     </div>
-                {% endif %}
-            </div>
 
-            <div class="form-group">
-                <label for="id_solicitado_por">Solicitado Por:</label>
-                <input type="text" class="form-control" id="id_solicitado_por" name="solicitado_por" value="{{ pedido.solicitado_por|default_if_none:'' }}" required>
-                {% if errors.solicitado_por %}
-                    <div class="text-danger">
-                        {% for error in errors.solicitado_por %}{{ error }}{% endfor %}
+                    <div class="mt-4 d-flex justify-content-between">
+                        <a href="{% url 'pedido_list' %}?page={{ current_page }}&status={{ current_status }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Voltar
+                        </a>
+                        <button type="submit" class="btn btn-primary px-4">
+                            <i class="bi bi-check-lg"></i> Salvar Solicitação
+                        </button>
                     </div>
-                {% endif %}
+                </form>
             </div>
-
-            <div class="form-group">
-                <label for="id_safra">Safra:</label>
-                <input type="text" class="form-control" id="id_safra" name="safra" value="{{ pedido.safra|default_if_none:'' }}" required>
-                {% if errors.safra %}
-                    <div class="text-danger">
-                        {% for error in errors.safra %}{{ error }}{% endfor %}
-                    </div>
-                {% endif %}
-            </div>
-
-            <div class="form-group">
-                <label for="id_centro_custo">Centro de Custo:</label>
-                <input type="text" class="form-control" id="id_centro_custo" name="centro_custo" value="{{ pedido.centro_custo|default_if_none:'' }}" required>
-                {% if errors.centro_custo %}
-                    <div class="text-danger">
-                        {% for error in errors.centro_custo %}{{ error }}{% endfor %}
-                    </div>
-                {% endif %}
-            </div>
-
-            <div class="form-group">
-                <label for="id_status">Status:</label>
-                <select class="form-control" id="id_status" name="status" required>
-                    <option value="">Selecione o Status</option>
-                    <option value="Recebido" {% if pedido.status == 'Recebido' %}selected{% endif %}>Recebido</option>
-                    <option value="Aguardando" {% if pedido.status == 'Aguardando' %}selected{% endif %}>Aguardando</option>
-                    <option value="Cancelada" {% if pedido.status == 'Cancelada' %}selected{% endif %}>Cancelada</option>
-                    <option value="Reprovada" {% if pedido.status == 'Reprovada' %}selected{% endif %}>Reprovada</option>
-                </select>
-                {% if errors.status %}
-                    <div class="text-danger">
-                        {% for error in errors.status %}{{ error }}{% endfor %}
-                    </div>
-                {% endif %}
-            </div>
-
-            <div class="form-group">
-                <label for="id_data">Data:</label>
-                <input type="date" class="form-control" id="id_data" name="data" value="{{ pedido.data|default_if_none:'' }}" required>
-                {% if errors.data %}
-                    <div class="text-danger">
-                        {% for error in errors.data %}{{ error }}{% endfor %}
-                    </div>
-                {% endif %}
-            </div>
-
-            <div class="form-group">
-                <label for="id_data_recebido">Data Recebido:</label>
-                <input type="date" class="form-control" id="id_data_recebido" name="data_recebido" value="{{ pedido.data_recebido|default_if_none:'' }}">
-                {% if errors.data_recebido %}
-                    <div class="text-danger">
-                        {% for error in errors.data_recebido %}{{ error }}{% endfor %}
-                    </div>
-                {% endif %}
-            </div>
-
-            <div class="form-group">
-                <label for="id_fornecedor">Fornecedor:</label>
-                <input type="text" class="form-control" id="id_fornecedor" name="fornecedor" value="{{ pedido.fornecedor|default_if_none:'' }}">
-                {% if errors.fornecedor %}
-                    <div class="text-danger">
-                        {% for error in errors.fornecedor %}{{ error }}{% endfor %}
-                    </div>
-                {% endif %}
-            </div>
-
-            <div class="form-group">
-                <label for="id_nota_fiscal">Nota Fiscal:</label>
-                <input type="text" class="form-control" id="id_nota_fiscal" name="nota_fiscal" value="{{ pedido.nota_fiscal|default_if_none:'' }}">
-                {% if errors.nota_fiscal %}
-                    <div class="text-danger">
-                        {% for error in errors.nota_fiscal %}{{ error }}{% endfor %}
-                    </div>
-                {% endif %}
-            </div>
-
-            <button type="submit" class="btn btn-primary">Salvar</button>
-            <a href="{% url 'pedido_list' %}" class="btn btn-secondary">Voltar para a Lista</a>
-        </form>
+        </div>
     </div>
-
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-</body>
-</html>
+</div>
+{% endblock %}
