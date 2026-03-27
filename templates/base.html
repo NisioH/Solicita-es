@@ -100,22 +100,12 @@
 <body>
     <nav id="mainNavbar" class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
         <div class="container-fluid">
-            <a class="navbar-brand fw-bold" href="{% url 'pedido_list' %}">Controle Solicitações</a>
-            
+                      
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
 
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="{% url 'pedido_list' %}">Ver solicitações</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'pedido_create' %}">Criar Nova</a>
-                    </li>
-                </ul>
-
+            <div class="collapse navbar-collapse align-items-right" id="navbarNav" style="justify-content: flex-end">
                 <div class="d-flex align-items-center">
                     <button id="btnToggleTheme" class="btn btn-sm btn-outline-light d-flex align-items-center px-3 py-1">
                         <i id="iconTheme" class="bi bi-moon-fill me-2"></i>
