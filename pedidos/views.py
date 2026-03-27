@@ -176,8 +176,13 @@ def home_page(request):
     return render(request, 'pedidos/home.html')
 
 def pedido_list(request):
-    # pega o parâmetros
-    page = int(request.GET.get('page', 1))
+   # 1. Captura os parâmetros, tratando o erro de string vazia ou inválida
+    try:
+        # Se 'page' estiver vazio ou não for um número, cai no except e vira 1
+        page = int(request.GET.get('page', 1) or 1)
+    except (ValueError, TypeError):
+        page = 1
+
     status_filter = request.GET.get('status', '')
     busca = request.GET.get('q', '')
 
