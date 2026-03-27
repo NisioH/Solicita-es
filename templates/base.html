@@ -60,11 +60,36 @@
         color: #aaa !important;
     }
 
-    /* Ajuste para o Datepicker (calendário) */
-    [data-bs-theme="dark"] .datepicker {
-        background-color: #2b2b2b !important;
+        /* Força a transparência no hover de meses e anos no modo dark */
+    [data-bs-theme="dark"] .datepicker table tr td span.month:hover,
+    [data-bs-theme="dark"] .datepicker table tr td span.year:hover,
+    [data-bs-theme="dark"] .datepicker table tr td span.decade:hover {
+        background-color: rgba(255, 255, 255, 0.05) !important; /* Quase invisível */
         color: #fff !important;
-        border: 1px solid #444;
+        border-radius: 4px;
+    }
+
+    /* Deixa o item que já está selecionado (Active) mais suave também */
+    [data-bs-theme="dark"] .datepicker table tr td span.active,
+    [data-bs-theme="dark"] .datepicker table tr td span.active.active {
+        background-color: rgba(13, 110, 253, 0.1) !important; /* Azul suave */
+        background-image: none !important;
+        box-shadow: none !important;
+        color: #5c5b5b !important;
+    }
+
+    /* Remove qualquer borda ou sombra estranha que o Datepicker coloca por padrão */
+    [data-bs-theme="dark"] .datepicker-dropdown {
+        border: 1px solid #444 !important;
+        box-shadow: 0 5px 10px rgba(0,0,0,0.5) !important;
+    }
+
+    /* Ajusta o cabeçalho (setas e título do mês/ano) */
+    [data-bs-theme="dark"] .datepicker .datepicker-switch:hover,
+    [data-bs-theme="dark"] .datepicker .prev:hover,
+    [data-bs-theme="dark"] .datepicker .next:hover,
+    [data-bs-theme="dark"] .datepicker tfoot th:hover {
+        background-color: rgba(255, 255, 255, 0.1) !important;
     }
 </style>
 
