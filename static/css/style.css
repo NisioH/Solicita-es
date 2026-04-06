@@ -1,0 +1,55 @@
+
+body { padding-top: 70px; transition: background-color 0.3s ease, color 0.3s ease; }
+.navbar { margin-bottom: 20px; transition: background-color 0.3s ease; }
+.container { margin-top: 20px; }
+.errorlist { color: #dc3545; list-style-type: none; padding: 0; margin-top: 5px; font-size: 0.9em; }
+
+/* --- MODO DARK --- */
+[data-bs-theme="dark"] body {
+    background-color: #121212 !important;
+    color: #f8f9fa;
+}
+
+[data-bs-theme="dark"] .card, 
+[data-bs-theme="dark"] .bg-light,
+[data-bs-theme="dark"] .bg-white,
+[data-bs-theme="dark"] .modal-content,
+[data-bs-theme="dark"] .modal-footer {
+    background-color: #1e1e1e !important;
+    color: #f8f9fa !important;
+    border-color: #333 !important;
+}
+
+[data-bs-theme="dark"] .table {
+    color: #f8f9fa !important;
+    background-color: transparent !important;
+    border-color: #444 !important;
+}
+
+[data-bs-theme="dark"] .table-striped>tbody>tr:nth-of-type(odd)>* {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+[data-bs-theme="dark"] .form-control,
+[data-bs-theme="dark"] .form-select {
+    background-color: #2b2b2b !important;
+    border-color: #444 !important;
+    color: #fff !important;
+}
+
+/* Datepicker no Modo Dark */
+[data-bs-theme="dark"] .datepicker {
+    background-color: #2b2b2b !important;
+    color: #fff !important;
+    border: 1px solid #444;
+}
+
+[data-bs-theme="dark"] .datepicker table tr td span.month:hover,
+[data-bs-theme="dark"] .datepicker table tr td span.year:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-bs-theme="dark"] .datepicker table tr td span.active {
+    background-color: rgba(13, 110, 253, 0.5) !important;
+    color: #fff !important;
+}

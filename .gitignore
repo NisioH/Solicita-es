@@ -20,7 +20,7 @@ __pycache__/
 pip-wheel-metadata/
 
 # Arquivos do Django
-static/
+
 media/
 migrations/
 
