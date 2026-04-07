@@ -317,11 +317,11 @@ def gerar_excel_relatorio_mensal(request):
         solicitacoes = db.solicitacoes.find({"data_criacao": {"$gte": inicio, "$lt": fim}})
         wb = Workbook()
         ws = wb.active
-        ws.append(["Número", "Descrição", "Solicitado Por", "Safra", "Status", "Data"])
+        ws.append(["Número", "Descrição", "Solicitado Por", "Centro de Custo", "Safra", "Status", "Data"])
         
         for s in solicitacoes:
             dt = s.get("data").strftime('%d/%m/%Y') if isinstance(s.get("data"), datetime) else ""
-            ws.append([s.get("numero"), s.get("descricao"), s.get("solicitado_por"), s.get("safra"), s.get("status"), dt])
+            ws.append([s.get("numero"), s.get("descricao"), s.get("solicitado_por"),s.get("centro_custo"), s.get("safra"), s.get("status"), dt])
 
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         response['Content-Disposition'] = f'attachment; filename=relatorio_{mes}_{ano}.xlsx'
